@@ -1,3 +1,21 @@
+# Board representation:
+# the board is a list of pieces (objects)
+#
+#	b b b b b b b b
+#   b b b b b b b b
+#   x x x x x x x x
+#   x x x x x x x x
+#   x x x x x x x x
+#   x x x x x x x x
+#   w w w w w w w w
+#   w w w w w w w w
+#
+
+# Helper Functions
+def pieceAtPos(self, board, pos):
+	if board[pos] == 
+
+
 class Engine:
 	def __init__(self):
 		self.turn = 0
@@ -17,6 +35,7 @@ class Piece():
 		self.color = color # 'white' or 'black'
 		#self.legal_moves = self.get_legal_moves()
 	
+
 	def get_legal_moves(self, state):
 		return None
 
