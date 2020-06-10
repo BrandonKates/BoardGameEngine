@@ -1,0 +1,20 @@
+ChessEngine Design Document:
+
+ChessEngine should enable someone to play chess against another person, follow all of the correct rules, keep track of the state of the game.
+
+ChessBoard: (timestep t) board that contains the current state of the game (the current location of every piece)
+ChessPiece: each of the different types of pieces, as well as rules for the movement of those pieces
+
+
+What happens on piece move:
+see if we are in check: if moving the piece would result in still being in check then cannot move it
+- check if the move is legal:
+	- to see if the move is legal we need to understand the type of piece and the current state of the board. We know in general that pieces cannot move through other pieces unless they are being captured, or is a knight
+
+
+different possible moves in chess:
+- can move up, down, left, right, diagonal in any of the four directions
+- knight moves in an L-shape (has 8 potential target squares)
+- castling
+- promotion: pawn becomes queen or any other piece
+- en passant: a pawn can capture another pawn that has evaded it by moving two squares
