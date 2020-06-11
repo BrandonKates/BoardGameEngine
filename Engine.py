@@ -49,15 +49,31 @@ class ChessBoard:
 	def __init__(self):
 		self.board = \
 		[
-			[Rook('a1', 'black'), Knight('a2', 'black'), Bishop('a3', 'black'), Queen('a4', 'black'), King('a5','black'), Bishop('a6', 'black'), Knight('a7', 'black'), Rook('a8', 'black')], 
-			[Pawn(8, 'black'), Pawn(9, 'black'), Pawn(10,'black'), Pawn(11, 'black'), Pawn(12,'black'), Pawn(13, 'black'), Pawn(14,'black'), Pawn(15, 'black')],
+			[Rook('a8', 'black'), Knight('b8', 'black'), Bishop('c8', 'black'), Queen('d8', 'black'), King('e8','black'), Bishop('f8', 'black'), Knight('g8', 'black'), Rook('h8', 'black')], 
+			[Pawn('a7', 'black'), Pawn('b7', 'black'), Pawn('c7','black'), Pawn('d7', 'black'), Pawn('e7','black'), Pawn('f7', 'black'), Pawn('g7','black'), Pawn('h7', 'black')],
 			[None, None, None, None, None, None, None, None],
 			[None, None, None, None, None, None, None, None],
 			[None, None, None, None, None, None, None, None],
 			[None, None, None, None, None, None, None, None],
-			[Pawn('g1', 'white'), Pawn('g2', 'white'), Pawn('g3','white'), Pawn('g4', 'white'), Pawn(52,'white'), Pawn(53, 'white'), Pawn(54,'white'), Pawn(55, 'white')],
-			[Rook('h1', 'white'), Knight('h2', 'white'), Bishop('h3', 'white'), Queen('h4', 'white'), King('h5','white'), Bishop('h6', 'white'), Knight('h7', 'white'), Rook('h8', 'white')]
-				]
+			[Pawn('a2', 'white'), Pawn('b2', 'white'), Pawn('c2','white'), Pawn('d2', 'white'), Pawn('e2','white'), Pawn('f2', 'white'), Pawn('g2','white'), Pawn('h2', 'white')],
+			[Rook('a1', 'white'), Knight('b1', 'white'), Bishop('c1', 'white'), Queen('d1', 'white'), King('e1','white'), Bishop('f1', 'white'), Knight('g1', 'white'), Rook('h1', 'white')]
+		]
+
+	def __str__(self):
+		board = ''
+		for i in range(0,8):
+			row = ''
+			for j in range(0,8):
+				piece = self.board[i][j]
+				if piece is None:
+					row += 'x'
+					if j <7:
+						row += ' '
+				else:
+					row += piece.unicode
+			board += row + "\n"
+		return board
+
 
 	def at(self, pos):
 		if type(pos) == dict:
@@ -90,7 +106,7 @@ class Piece():
 
 
 	def get_legal_moves(self, state):
-		return None
+		self.board = state.board
 
 
 	def check_pos(self, pos_fn):
@@ -99,15 +115,20 @@ class Piece():
 		while True:
 			next_pos = pos_fn(spaces)
 			if next_pos:
+				check = self.checkPosForPieces(*next_pos)
+				if check == 0:
+					break
 				legal_moves.append(next_pos)
+				if check == 2:
+					break
 				spaces += 1
 			else:
 				break
 		return legal_moves
 
 	# check the position x,y for allied or enemy pieces
-	def checkPosForPieces(self, x, y, board):
-		proposed_color = board.color_at((x,y))
+	def checkPosForPieces(self, x, y):
+		proposed_color = self.board.color_at((x,y))
 		if self.color == proposed_color:
 			return 0 # white piece can't move onto or past another white piece 0==False (unless castling)
 		if proposed_color == None:
@@ -118,7 +139,13 @@ class Piece():
 	def checkLegalPos(self, x, y):
 		if x < 0 or x > 7 or y < 0 or y > 7:
 			return False
-		return x,y
+		posForPieces = self.checkPosForPieces(x, y)
+		if posForPieces == 0:
+			return False
+		if posForPieces == 1:
+			return x,y
+		if posForPieces == 2:
+			return x,y
 
 
 	def pos_update(self, x_offset, y_offset, spaces = 1):
@@ -180,6 +207,7 @@ class Pawn(Piece):
 			self.unicode = '♟︎';
 
 	def get_legal_moves(self, state):
+		super(Pawn, self).get_legal_moves(state)
 		board = state.board
 		turn = state.turn
 		
@@ -212,12 +240,12 @@ class Rook(Piece):
 			self.unicode = '♜'
 
 	def get_legal_moves(self, state):
+		super(Rook, self).get_legal_moves(state)
 		offset_fns = [self.pos_up, self.pos_down, self.pos_left, self.pos_right]
 		legal_moves = []
 		for offset_fn in offset_fns:
 			legal_moves.extend(self.check_pos(offset_fn))
 		return [coordsToPos[move[0]][move[1]] for move in legal_moves]
-		#return legal_moves
 
 
 class Knight(Piece):
@@ -239,6 +267,7 @@ class Knight(Piece):
 		return moves
 
 	def get_legal_moves(self, state):
+		super(Knight, self).get_legal_moves(state)
 		legal_moves = self.knight_moves()
 		return [coordsToPos[move[0]][move[1]] for move in legal_moves]		
 
@@ -253,6 +282,7 @@ class Bishop(Piece):
 			self.unicode = '♝'
 
 	def get_legal_moves(self, state):
+		super(Bishop, self).get_legal_moves(state)
 		offset_fns = [self.pos_up_right, self.pos_up_left, self.pos_down_right, self.pos_down_left]
 		legal_moves = []
 		for offset_fn in offset_fns:
@@ -270,6 +300,7 @@ class Queen(Piece):
 			self.unicode = '♛'
 
 	def get_legal_moves(self, state):
+		super(Queen, self).get_legal_moves(state)
 		offset_fns = [self.pos_up, self.pos_down, self.pos_left, self.pos_right, 
 				   self.pos_up_right, self.pos_up_left, self.pos_down_right, self.pos_down_left]
 		legal_moves = []
@@ -298,5 +329,6 @@ class King(Piece):
 		return moves
 
 	def get_legal_moves(self, state):
+		super(King, self).get_legal_moves(state)
 		legal_moves = self.king_moves()
 		return [coordsToPos[move[0]][move[1]] for move in legal_moves]	
