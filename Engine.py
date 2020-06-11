@@ -12,8 +12,28 @@
 #
 
 # Helper Functions
-def pieceAtPos(self, board, pos):
-	if board[pos] == 
+
+posToCoords = {
+	'a8': (0,0),'b8': (0,1),'c8': (0,2),'d8': (0,3),'e8': (0,4),'f8': (0,5),'g8': (0,6),'h8': (0,7),
+	'a7': (1,0),'b7': (1,1),'c7': (1,2),'d7': (1,3),'e7': (1,4),'f7': (1,5),'g7': (1,6),'h7': (1,7),
+	'a6': (2,0),'b6': (2,1),'c6': (2,2),'d6': (2,3),'e6': (2,4),'f6': (2,5),'g6': (2,6),'h6': (2,7),
+	'a5': (3,0),'b5': (3,1),'c5': (3,2),'d5': (3,3),'e5': (3,4),'f5': (3,5),'g5': (3,6),'h5': (3,7),
+	'a4': (4,0),'b4': (4,1),'c4': (4,2),'d4': (4,3),'e4': (4,4),'f4': (4,5),'g4': (4,6),'h4': (4,7),
+	'a3': (5,0),'b3': (5,1),'c3': (5,2),'d3': (5,3),'e3': (5,4),'f3': (5,5),'g3': (5,6),'h3': (5,7),
+	'a2': (6,0),'b2': (6,1),'c2': (6,2),'d2': (6,3),'e2': (6,4),'f2': (6,5),'g2': (6,6),'h2': (6,7),
+	'a1': (7,0),'b1': (7,1),'c1': (7,2),'d1': (7,3),'e1': (7,4),'f1': (7,5),'g1': (7,6),'h1': (7,7)
+}
+
+coordsToPos = [
+	['a8', 'b8', 'c8', 'd8', 'e8', 'f8', 'g8', 'h8'],
+	['a7', 'b7', 'c7', 'd7', 'e7', 'f7', 'g7', 'h7'],
+	['a6', 'b6', 'c6', 'd6', 'e6', 'f6', 'g6', 'h6'],
+	['a5', 'b5', 'c5', 'd5', 'e5', 'f5', 'g5', 'h5'],
+	['a4', 'b4', 'c4', 'd4', 'e4', 'f4', 'g4', 'h4'],
+	['a3', 'b3', 'c3', 'd3', 'e3', 'f3', 'g3', 'h3'],
+	['a2', 'b2', 'c2', 'd2', 'e2', 'f2', 'g2', 'h2'],
+	['a1', 'b1', 'c1', 'd1', 'e1', 'f1', 'g1', 'h1']
+]
 
 
 class Engine:
@@ -22,154 +42,261 @@ class Engine:
 		self.player = 'white'
 		self.board = ChessBoard()
 	
-	def updatePlayer(self, turn):
+	def update_player(self, turn):
 		return 'white' if turn % 2 == 0 else 'black'
 
 class ChessBoard:
 	def __init__(self):
-		self.board = None
+		self.board = \
+		[
+			[Rook('a1', 'black'), Knight('a2', 'black'), Bishop('a3', 'black'), Queen('a4', 'black'), King('a5','black'), Bishop('a6', 'black'), Knight('a7', 'black'), Rook('a8', 'black')], 
+			[Pawn(8, 'black'), Pawn(9, 'black'), Pawn(10,'black'), Pawn(11, 'black'), Pawn(12,'black'), Pawn(13, 'black'), Pawn(14,'black'), Pawn(15, 'black')],
+			[None, None, None, None, None, None, None, None],
+			[None, None, None, None, None, None, None, None],
+			[None, None, None, None, None, None, None, None],
+			[None, None, None, None, None, None, None, None],
+			[Pawn('g1', 'white'), Pawn('g2', 'white'), Pawn('g3','white'), Pawn('g4', 'white'), Pawn(52,'white'), Pawn(53, 'white'), Pawn(54,'white'), Pawn(55, 'white')],
+			[Rook('h1', 'white'), Knight('h2', 'white'), Bishop('h3', 'white'), Queen('h4', 'white'), King('h5','white'), Bishop('h6', 'white'), Knight('h7', 'white'), Rook('h8', 'white')]
+				]
+
+	def at(self, pos):
+		if type(pos) == dict:
+			return self.board[pos['x']][pox['y']]
+		if type(pos) == tuple:
+			return self.board[pos[0]][pos[1]]
+
+	def piece_at(self, pos):
+		return self.at(pos) != None
+
+	def color_at(self, pos):
+		p = self.at(pos)
+		return p.color if p is not None else None
 
 class Piece():
-	def __init__(self, start_pos, color):
-		self.pos = start_pos
+	def __init__(self, pos, color):
+		self.pos = self.set_initial_pos(pos)# {'x' : start_pos , 'y': start_pos}
 		self.color = color # 'white' or 'black'
-		#self.legal_moves = self.get_legal_moves()
+		self.letter = None # example: 'B' for Bishop
+		self.unicode = None # unicode representation for each type of chess piece
 	
+
+	def set_initial_pos(self, pos):
+		x,y = None, None
+		if type(pos) == str:
+			x,y = posToCoords[pos]
+		if type(pos) == tuple:
+			x,y = pos
+		return {'x': x, 'y': y}
+
 
 	def get_legal_moves(self, state):
 		return None
 
-	def checkLegalPos(self, pos):
-		if pos > 63 or pos < 0:
-			return False
-		else:
-			return True
-
-	def computeRow(self, pos):
-		return pos // 8
-	# relative upward position for white and black side
-	def pos_up(self, spaces=1):
-		pos = None
-		if self.color == 'white':
-			pos = self.pos - (8 * spaces)
-		elif self.color == 'black':
-			pos = self.pos + (8 * spaces)
-		return pos if self.checkLegalPos(pos) else -1
-
-	def pos_down(self, spaces=1):
-		pos = None
-		if self.color == 'black':
-			pos = self.pos - (8 * spaces)
-		elif self.color == 'white':
-			pos = self.pos + (8 * spaces)
-		return pos if self.checkLegalPos(pos) else -1
-
-	def pos_left(self, spaces=1):
-		# need to check if we go off the board left or right
-		row = self.computeRow(self.pos)
-		if self.color == 'white':
-			pos = self.pos - (1 * spaces)
-		elif self.color == 'black':
-			pos = self.pos + (1 * spaces)
-		if row == self.computeRow(pos) and self.checkLegalPos(pos):
-			return pos
-		return -1
-
-	def pos_right(self, spaces=1):
-		# need to check if we go off the board left or right
-		row = self.computeRow(self.pos)
-		if self.color == 'black':
-			pos = self.pos - (1 * spaces)
-		elif self.color == 'white':
-			pos = self.pos + (1 * spaces)
-		if row == self.computeRow(pos) and self.checkLegalPos(pos):
-			return pos
-		return -1
-
-	# diagonal move up and to the left
-	def pos_up_left(self, spaces=1):
-		# need to check if we go off the board left or right
-		row = self.computeRow(self.pos)
-		if self.color == 'white':
-			pos = self.pos - (9 * spaces)
-		elif self.color == 'black':
-			pos = self.pos + (9 * spaces)
-		if abs(row - self.computeRow(pos)) == spaces and self.checkLegalPos(pos):
-			return pos
-		return -1	
-	#
-	def pos_up_right(self, spaces=1):
-		# need to check if we go off the board left or right
-		row = self.computeRow(self.pos)
-		if self.color == 'white':
-			pos = self.pos - (7 * spaces)
-		elif self.color == 'black':
-			pos = self.pos + (7 * spaces)
-		if abs(row - self.computeRow(pos)) == spaces and self.checkLegalPos(pos):
-			return pos
-		return -1
-	#
-	def pos_down_left(self, spaces=1):
-		row = self.computeRow(self.pos)
-		if self.color == 'black':
-			pos = self.pos - (7 * spaces)
-		elif self.color == 'white':
-			pos = self.pos + (7 * spaces)
-		if abs(row - self.computeRow(pos)) == spaces and self.checkLegalPos(pos):
-			return pos
-		return -1
-	#
-	def pos_down_right(self, spaces=1):
-		row = self.computeRow(self.pos)
-		if self.color == 'white':
-			pos = self.pos - (9 * spaces)
-		elif self.color == 'black':
-			pos = self.pos + (9 * spaces)
-		if abs(row - self.computeRow(pos)) == spaces and self.checkLegalPos(pos):
-			return pos
-		return -1
-
-class Pawn(Piece):
-	# Pawn can move ahead 1 or 2 squares or capture piece or en passant
-	def __init__(self, start_pos, color):
-		super(Pawn, self).__init__(start_pos, color)
-
-	def get_legal_moves(self, state):
-		board = state.board
-		turn = state.turn
-
-		if self.color == 'white':
-			return
-
-class Rook(Piece):
-	# rook moves forward as many squares until it captures or reaches end of row 
-	def __init__(self, start_pos, color):
-		super(Rook, self).__init__(start_pos, color)
 
 	def check_pos(self, pos_fn):
 		legal_moves = []
 		spaces = 1
 		while True:
 			next_pos = pos_fn(spaces)
-			if next_pos == -1:
-				break
-			else:
+			if next_pos:
 				legal_moves.append(next_pos)
 				spaces += 1
-		return legal_moves
-	def get_legal_moves(self, state):
-		legal_moves = []
-		legal_moves.extend(self.check_pos(self.pos_up))
-		legal_moves.extend(self.check_pos(self.pos_down))
-		legal_moves.extend(self.check_pos(self.pos_left))
-		legal_moves.extend(self.check_pos(self.pos_right))
+			else:
+				break
 		return legal_moves
 
+	# check the position x,y for allied or enemy pieces
+	def checkPosForPieces(self, x, y, board):
+		proposed_color = board.color_at((x,y))
+		if self.color == proposed_color:
+			return 0 # white piece can't move onto or past another white piece 0==False (unless castling)
+		if proposed_color == None:
+			return 1 # white piece can move onto or past an empty square 1==True
+		if self.color != proposed_color:
+			return 2 # white piece can capture a black piece, however cannot move any further: 2==True + special case
+
+	def checkLegalPos(self, x, y):
+		if x < 0 or x > 7 or y < 0 or y > 7:
+			return False
+		return x,y
+
+
+	def pos_update(self, x_offset, y_offset, spaces = 1):
+		if self.color == 'white':
+			pos_x = self.pos['x'] - x_offset * spaces # -x is up for white   | +x is down for white
+			pos_y = self.pos['y'] - y_offset * spaces # -y is left for white | +y is right for white
+		if self.color == 'black':
+			pos_x = self.pos['x'] + x_offset * spaces # +x is up for black   | -x is down for black
+			pos_y = self.pos['y'] + y_offset * spaces # +y is left for black | -y is right for white
+		return pos_x, pos_y
+
+	# relative upward position for white and black side --> only really useful for pawns?
+	def pos_up(self, spaces=1):
+		pos = self.pos_update(x_offset = 1, y_offset = 0, spaces = spaces)
+		return self.checkLegalPos(*pos)
+
+	def pos_down(self, spaces=1):
+		pos = self.pos_update(x_offset = -1, y_offset = 0, spaces = spaces)
+		return self.checkLegalPos(*pos) 
+
+	def pos_left(self, spaces=1):
+		# need to check if we go off the board left or right
+		pos = self.pos_update(x_offset = 0, y_offset = 1, spaces = spaces)
+		return self.checkLegalPos(*pos)
+
+	def pos_right(self, spaces=1):
+		# need to check if we go off the board left or right
+		pos = self.pos_update(x_offset = 0, y_offset = -1, spaces = spaces)
+		return self.checkLegalPos(*pos)
+
+	# diagonal move up and to the left
+	def pos_up_left(self, spaces=1):
+		# need to check if we go off the board left or right
+		pos = self.pos_update(x_offset = 1, y_offset = 1, spaces = spaces)
+		return self.checkLegalPos(*pos)
+	#
+	def pos_up_right(self, spaces=1):
+		# need to check if we go off the board left or right
+		pos = self.pos_update(x_offset = 1, y_offset = -1, spaces = spaces)
+		return self.checkLegalPos(*pos)
+	#
+	def pos_down_left(self, spaces=1):
+		pos = self.pos_update(x_offset = -1, y_offset = 1, spaces = spaces)
+		return self.checkLegalPos(*pos)
+	#
+	def pos_down_right(self, spaces=1):
+		pos = self.pos_update(x_offset = -1, y_offset = -1, spaces = spaces)
+		return self.checkLegalPos(*pos)
+
+class Pawn(Piece):
+	# Pawn can move ahead 1 or 2 squares or capture piece or en passant
+	def __init__(self, start_pos, color):
+		super(Pawn, self).__init__(start_pos, color)
+		self.start_pos = self.set_initial_pos(start_pos)
+		self.letter = 'p'
+		if self.color == 'white':
+			self.unicode = '♙'
+		else:
+			self.unicode = '♟︎';
+
+	def get_legal_moves(self, state):
+		board = state.board
+		turn = state.turn
+		
+		legal_moves = []
+		m1 = self.pos_up(spaces=1)
+		if m1:
+			legal_moves.append(m1)
+		if self.pos['x'] == self.start_pos['x'] and self.pos['y'] == self.start_pos['y']:
+			m2 = self.pos_up(spaces=2)
+			if m2:
+				legal_moves.append(m2)
+		m3 = self.pos_up_right(spaces=1) # for captures
+		m4 = self.pos_up_left(spaces=1)  # for captures]
+		if m3:
+			legal_moves.append(m3)
+		if m4:
+			legal_moves.append(m4)
+		return [coordsToPos[move[0]][move[1]] for move in legal_moves]
+
+
+# TODO: Add Castling, 
+class Rook(Piece):
+	# rook moves forward as many squares until it captures or reaches end of row 
+	def __init__(self, start_pos, color):
+		super(Rook, self).__init__(start_pos, color)
+		self.letter = 'R'
+		if self.color == "white":
+			self.unicode = '♖'
+		else:
+			self.unicode = '♜'
+
+	def get_legal_moves(self, state):
+		offset_fns = [self.pos_up, self.pos_down, self.pos_left, self.pos_right]
+		legal_moves = []
+		for offset_fn in offset_fns:
+			legal_moves.extend(self.check_pos(offset_fn))
+		return [coordsToPos[move[0]][move[1]] for move in legal_moves]
+		#return legal_moves
+
+
 class Knight(Piece):
-	pass
+	def __init__(self, start_pos, color):
+		super(Knight, self).__init__(start_pos, color)
+		self.letter = 'N'
+		if self.color == "white":
+			self.unicode = '♘'
+		else:
+			self.unicode = '♞'
+
+	def knight_moves(self):
+		moves = []
+		offsets = [(2,1), (2,-1), (-2,1), (-2,-1), (1,2), (1,-2), (-1,2), (-1,-2)]
+		for offset_x, offset_y in offsets:
+			pos = self.pos_update(offset_x, offset_y)
+			if self.checkLegalPos(*pos):
+				moves.append(pos)
+		return moves
+
+	def get_legal_moves(self, state):
+		legal_moves = self.knight_moves()
+		return [coordsToPos[move[0]][move[1]] for move in legal_moves]		
+
+
 class Bishop(Piece):
-	pass
+	def __init__(self, start_pos, color):
+		super(Bishop, self).__init__(start_pos, color)
+		self.letter = 'B'
+		if self.color == 'white':
+			self.unicode = '♗'
+		else:
+			self.unicode = '♝'
+
+	def get_legal_moves(self, state):
+		offset_fns = [self.pos_up_right, self.pos_up_left, self.pos_down_right, self.pos_down_left]
+		legal_moves = []
+		for offset_fn in offset_fns:
+			legal_moves.extend(self.check_pos(offset_fn))
+		return [coordsToPos[move[0]][move[1]] for move in legal_moves]
+
+
 class Queen(Piece):
-	pass
+	def __init__(self, start_pos, color):
+		super(Queen, self).__init__(start_pos, color)
+		self.letter = 'Q'
+		if self.color == 'white':
+			self.unicode = '♕'
+		else:
+			self.unicode = '♛'
+
+	def get_legal_moves(self, state):
+		offset_fns = [self.pos_up, self.pos_down, self.pos_left, self.pos_right, 
+				   self.pos_up_right, self.pos_up_left, self.pos_down_right, self.pos_down_left]
+		legal_moves = []
+		for offset_fn in offset_fns:
+			legal_moves.extend(self.check_pos(offset_fn))
+		return [coordsToPos[move[0]][move[1]] for move in legal_moves]
+	
+
+# TODO: Add Castling, 
 class King(Piece):
-	pass
+	def __init__(self, start_pos, color):
+		super(King, self).__init__(start_pos, color)
+		self.letter = 'K'
+		if self.color == "white":
+			self.unicode = '♔'
+		else:
+			self.unicode = '♚'
+
+	def king_moves(self):
+		moves = []
+		offsets = [(0,1), (0,-1), (1,0), (-1,0), (1,1), (1,-1), (-1,1), (-1,-1)]
+		for offset_x, offset_y in offsets:
+			pos = self.pos_update(offset_x, offset_y)
+			if self.checkLegalPos(*pos):
+				moves.append(pos)
+		return moves
+
+	def get_legal_moves(self, state):
+		legal_moves = self.king_moves()
+		return [coordsToPos[move[0]][move[1]] for move in legal_moves]	
