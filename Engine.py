@@ -45,6 +45,9 @@ class Engine:
 	def update_player(self, turn):
 		return 'white' if turn % 2 == 0 else 'black'
 
+	def start_new_game(self):
+		
+
 class ChessBoard:
 	def __init__(self):
 		self.board = \
@@ -67,7 +70,7 @@ class ChessBoard:
 				piece = self.board[i][j]
 				if piece is None:
 					row += 'x'
-					if j <7:
+					if j < 7:
 						row += ' '
 				else:
 					row += piece.unicode
@@ -88,6 +91,9 @@ class ChessBoard:
 		p = self.at(pos)
 		return p.color if p is not None else None
 
+	def update_board(self, piece1, pos):
+		v
+
 class Piece():
 	def __init__(self, pos, color):
 		self.pos = self.set_initial_pos(pos)# {'x' : start_pos , 'y': start_pos}
@@ -104,6 +110,9 @@ class Piece():
 			x,y = pos
 		return {'x': x, 'y': y}
 
+
+	def update_position(self, x, y):
+		self.pos = {'x' : x, 'y' : y}
 
 	def get_legal_moves(self, state):
 		self.board = state.board
@@ -212,19 +221,25 @@ class Pawn(Piece):
 		turn = state.turn
 		
 		legal_moves = []
-		m1 = self.pos_up(spaces=1)
-		if m1:
+		m1 = self.pos_update(x_offset = 1, y_offset = 0, spaces = 1) # up 1
+		if self.checkLegalPos(*m1) and self.checkPosForPieces(*m1) == 1:
 			legal_moves.append(m1)
+		
 		if self.pos['x'] == self.start_pos['x'] and self.pos['y'] == self.start_pos['y']:
-			m2 = self.pos_up(spaces=2)
-			if m2:
+			m2 = self.pos_update(x_offset = 1, y_offset = 0, spaces = 2) # up 2
+			if self.checkLegalPos(*m2) and self.checkPosForPieces(*m2) == 1:
 				legal_moves.append(m2)
-		m3 = self.pos_up_right(spaces=1) # for captures
-		m4 = self.pos_up_left(spaces=1)  # for captures]
-		if m3:
+		
+		m3 = self.pos_update(x_offset = 1, y_offset = -1, spaces = 1) # capture up right
+		if self.checkLegalPos(*m3) and self.checkPosForPieces(*m3) == 2:
 			legal_moves.append(m3)
-		if m4:
+		
+		m4 = self.pos_update(x_offset = 1, y_offset = 1, spaces = 1) # capture up left
+		if self.checkLegalPos(*m4) and self.checkPosForPieces(*m4) == 2:
 			legal_moves.append(m4)
+
+		# add a custom case for en passant ^ the above only count for captures where another piece occupies an adjacent square
+		# for en passant would need to know the previous state of the board as well
 		return [coordsToPos[move[0]][move[1]] for move in legal_moves]
 
 
