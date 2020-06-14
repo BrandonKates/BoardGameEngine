@@ -131,10 +131,10 @@ class ChessBoard:
 	 	 Piece(PieceType.PAWN,  Color.WHITE), Piece(PieceType.PAWN,   Color.WHITE), Piece(PieceType.PAWN,   Color.WHITE), Piece(PieceType.PAWN,  Color.WHITE)],
 	 	[Piece(PieceType.ROOK,  Color.WHITE), Piece(PieceType.KNIGHT, Color.WHITE), Piece(PieceType.BISHOP, Color.WHITE), Piece(PieceType.QUEEN, Color.WHITE), 
 	 	 Piece(PieceType.KING,  Color.WHITE), Piece(PieceType.BISHOP, Color.WHITE), Piece(PieceType.KNIGHT, Color.WHITE), Piece(PieceType.ROOK,  Color.WHITE)]
-	]
-	self.prevBoard = self.board.copy()
-	self.enPassant = None # en-passant can only be performed immediately after the opponent makes the move with their pawn
-	self.castling_rights = {'white_left': True, 'white_right': True, 'black_left' : True, 'black_right' : True}
+		]
+		self.prevBoard = self.board.copy()
+		self.enPassant = None # en-passant can only be performed immediately after the opponent makes the move with their pawn
+		self.castling_rights = {'white_left': True, 'white_right': True, 'black_left' : True, 'black_right' : True}
 	def __str__(self):
 		return self.toUnicode()
 
@@ -296,7 +296,7 @@ class ChessBoard:
 		else:
 			return False
 
-	def is_pawn_promotion_rank(self, pos, color)
+	def is_pawn_promotion_rank(self, pos, color):
 		x,y = self.pos_as_tuple(pos)
 		pos = coordinates_to_position[x][y]
 		return pos[1] == '1' or pos[1] == '8'
@@ -329,6 +329,7 @@ class ChessBoard:
 	def under_attack(self, pos, our_color):
 		opp_color = self.opponent_color(our_color)
 
+		# TODO: no castling?
 		king_dests = self.generate_king_moves(pos, our_color)
 		for dest in king_dests:
 			if self.at(dest) is Piece(PieceType.KING,  opp_color):
@@ -336,13 +337,13 @@ class ChessBoard:
 
 		bishop_dests = self.generate_bishop_moves(pos, our_color)
 		for dest in bishop_dests:
-			if self.at(dest) is Piece(PieceType.BISHOP, opp_color) or
+			if self.at(dest) is Piece(PieceType.BISHOP, opp_color) or \
 			   self.at(dest) is Piece(PieceType.QUEEN, opp_color):
 			   return True
 
 		rook_dests = self.generate_rook_moves(pos, our_color)
 		for dest in rook_dests:
-			if self.at(dest) is Piece(PieceType.ROOK, opp_color) or
+			if self.at(dest) is Piece(PieceType.ROOK, opp_color) or \
 			   self.at(dest) is Piece(PieceType.QUEEN, opp_color):
 			   return True
 
