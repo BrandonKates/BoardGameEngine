@@ -274,9 +274,25 @@ class Backgammon:
 			self.update_board_pos(end_pos, cur_player, self.board[end_pos].num + 1)
 		
 		
-
 	def undo_move(self, move):
-		pass
+		start_pos = move.pos
+		end_pos = self.get_pos_from_move(move)
+		cur_player = move.color
+		opp_player = self.opp_color(cur_player)
+		if start_pos == self.bar_pos:
+			self.bar[cur_player] += 1
+		else:
+			self.update_board_pos(start_pos, cur_player, self.board[start_pos].num + 1)
+		if not self.in_board(end_pos):
+			self.beared_pieces[cur_player] -= 1
+		elif move.hit:
+			# not bear move
+			self.update_board_pos(end_pos, opp_player, 1)
+			self.bar[opp_player] -= 1
+		else:
+			self.update_board_pos(end_pos, cur_player, self.board[end_pos].num - 1)
+
+
 
 	def moves_non_double(self, color, roll):
 		direction = direction_from_color(color) # 1 for light, -1 for dark
