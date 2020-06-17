@@ -46,8 +46,13 @@ class Backgammon:
 		self.board_size = len(self.board)
 		self.beared_pieces = {Color.LIGHT: 0, Color.DARK: 0} # pieces that have moved off the board
 
-	def ind_to_points(self, ind):
-		return str(ind + 1)
+	def ind_as_string(self, ind):
+		if self.in_board(ind):
+			return str(ind + 1)
+		if ind == self.bar_pos:
+			return 'bar'
+		else:
+			return 'off'
 
 	def roll_die(self):
 		return random.randint(1,6)
@@ -114,11 +119,6 @@ class Backgammon:
 		elif color is Color.DARK:
 			return self.board_size
 
-	# class Move(NamedTuple): # pass is encoded (-1,-1,false)
-	#	color: Color
-	#	pos: int # 0-23, bar=24
-	#	num: int # roll: 1-6
-	#	hit: bool # hit piece of opposite color
 
 	def get_pos(self, pos, roll, color): # roll is a single value here
 		if pos == self.bar_pos:
@@ -128,92 +128,152 @@ class Backgammon:
 	def get_pos_from_move(self, move):
 		return self.get_pos(move.pos, move.num, move.color)
 
-	# Backgammon Algebraic Notation = BAN
-	def move_to_BAN(self, move : Move) -> str:
-		initial_pos = 'bar' if move.pos == self.bar_pos else self.ind_to_points(move.pos)
 
-		fp = self.get_pos_from_move(move)
-		final_pos = self.ind_to_points(fp) if self.in_board(fp) else 'off'
-		#BAN_notation = '%s/%s' % (initial_pos, final_pos)
-		#if move.hit:
-		#BAN_notation += '*'
-		#return BAN_notation
-		return initial_pos, final_pos, move.hit
-
-	def moves_to_BAN_no_doubles(self, moves) -> str:
-		rolls = []
+	def moves_to_dicts(self, moves) -> list:
+		rolls = [m.num for m in moves][:2] # only want the first two in the case we have doubles (more than 2 rolls, otherwise we always have <=2 moves)
+		dicts = []
 		for move in moves:
-			rolls.append(move.roll)
-			if move.pos is None:
+			if move.pos:
+				dicts.append( {'pos' : [move.pos, self.get_pos_from_move(move)], \
+						   	   'hit' : [False, move.hit]})
+		return dicts
+
+	def dict_to_BAN(self, d):
+		s = ''
+		for pos, hit in zip(d['pos'], d['hit']):
+			s += self.ind_as_string(pos)
+			if hit:
+				s += "*"
+			s += '/'
+		return s[:-1] # remove final slash
+		
+
+	# Backgammon Algebraic Notation = BAN
+	def dicts_to_BAN_no_doubles(self, dicts) -> str:
+		rolls = ''
+		shared = self.check_shared(dicts[0], dicts[1])
+		if shared:
+			rolls += self.dict_to_BAN(shared)
+		else:
+			rolls += self.dict_to_BAN(dicts[0]) + ' ' + self.dict_to_BAN(dicts[1])
+		return rolls
+
+	def dicts_to_BAN_doubles(self, dicts) -> str:
+		i = 0
+		j = 1
+		while 1 < len(dicts) and i < len(dicts):
+			while len(dicts) > 1 and j < len(dicts):
+				combine = self.check_shared(dicts[i], dicts[j]) # i<j
+				if combine:
+					dicts = [combine] + dicts[0:i] + dicts[i+1:j] + dicts[j+1:]
+					i = 0
+					j = 1
+				else:
+					j+=1
+			i+=1
+			j=i+1
+
+		for i in range(len(dicts)):
+			dicts[i]['eq'] = 1
+
+		i = 0
+		j = 1
+		while 1 < len(dicts) and i < len(dicts):
+			while len(dicts) > 1 and j < len(dicts):
+				combine = self.check_equality(dicts[i], dicts[j]) # i<j
+				if combine:
+					dicts = [combine] + dicts[0:i] + dicts[i+1:j] + dicts[j+1:]
+					i = 0
+					j = 1
+				else:
+					j+=1
+			i+=1
+			j=i+1
+
+		rolls = ''
+		for d in dicts:
+			rolls += self.dict_to_BAN(d)
+			if d['eq'] > 1:
+				rolls += '(%s)' % d['eq']
+			rolls += ' '
+		return rolls.strip()
+
+
 
 	def moves_to_BAN(self, moves) -> str:
-		n = len(moves)
+		rolls = '%s-%s: ' % (moves[0].num, moves[1].num)
+		dicts = self.moves_to_dicts(moves)
+		if len(dicts) == 0:
+			return rolls + '(no play)'
+		if len(dicts) == 1:
+			return rolls + self.dict_to_BAN(dicts[0])
 		if len(moves) <= 2:
-			self.moves_to_BAN_no_doubles(moves)
+			return rolls + self.dicts_to_BAN_no_doubles(dicts)
 		else:
-			self.moves_to_BAN_doubles(moves)
+			return rolls + self.dicts_to_BAN_doubles(dicts)
 
-	def combine_multimoves(self, moves: List) -> List:
-		 # given two moves:
-		 # either combine them as 6-2:9/3 3/1 -> 6-2:9/1
-		 # or if a hit then: 6-2:9/3* 3/1 -> 6-2:9/3*/1
-		 # else: 2-2: 9/5 9/5 -> 2-2:9/5(2)
+	def check_shared(self, t1, t2):
+		def check_shared_helper(t, bef, bef_hit):
+			pos = bef
+			hit = bef_hit
+			for i in range(1, len(t['pos'])):
+				if t['hit'][i]:
+					pos.append(t['pos'][i])
+					hit.append(True)
+			return pos, hit
+		def helper(t1, t2):
+			hit = [False]
+			pos, hit = check_shared_helper(t1, [t1['pos'][0]], [False])
+			pos, hit = check_shared_helper(t2, pos, hit)
+			if not t2['hit'][-1]:
+				pos.append(t2['pos'][-1])
+				hit.append(t2['hit'][-1])
+			return {'pos' : pos, 'hit' : hit}
+		# t1_final == t2_start
+		if t1['pos'][-1] == t2['pos'][0]:
+			return helper(t1, t2)
+		# t2_start == t1_final
+		elif t2['pos'][-1] == t1['pos'][0]:
+			return helper(t2, t1)
+		return False
 
-	def move_equality(self, m1, m2):
-		return m1.pos == m2.pos and m1.num == m2.num:
+	def check_equality(self, t1, t2):
+		if len(t1['pos']) != len(t2['pos']):
+			return False
+		for t1_pos, t1_hit, t2_pos, t2_hit in zip(t1['pos'], t1['hit'], t2['pos'], t2['hit']):
+			if t1_pos != t2_pos or t1_hit != t2_hit:
+				return False
+		t1['eq'] += t2['eq']
+		return t1
 
-	def check_shared(self, m1, m2):
-		m1_final = self.get_pos_from_move(m1)
-		m2_final = self.get_pos_from_move(m2)
-		hit = m1.hit or m2.hit
 
-		if m1_final == m2.pos:
-			if m1.hit:
-				# new move is m1.pos/m1_final*/m2_final
-				(m1.pos, m1_final, m2_final), (False, True, False)
-			elif m2.hit:
-				(m1.pos, m1_final, m2_final), (False, False, True)
-				# m1.pos/m2_final*
-			else:
-				(m1.pos, m1_final, m2_final), (False, False, False)
-				# m1.pos/m2_final
-		elif m2_final == m1.pos:
-			if m2.hit:
-				(m2.pos, m2_final, m1_final), (False, True, False)
-				# new move is m2.pos/m2_final*/m1_final
-			elif m1.hit:
-				(m2.pos, m2_final, m1_final), (False, False, True)
-				# new move is m2.pos/m1_final*
-			else:
-				(m2.pos, m2_final, m1_final), (False, False, False)
-				# new move is m2.pos/m1_final
-
-	def combine_two(self, move1, move2):
-		max_die = max(move1.num, move2.num)
-		min_die = min(move1.num, move2.num)
-
-		if self.get_pos_from_move(move1)
-		# check same (last):
-		elif self.move_equality(move1, move2):
-			s = '%s-%s: %s/%s(2)'
-			#return Move(move1.pos, move1.num, move1.hit or move2.hit) # same move
-
+	def update_board_pos(self, pos, color, amnt):
+		assert amnt >= 0
+		if amnt == 0:
+			color = Color.EMPTY
+		self.board[pos] = BoardSquare(color, amnt)
 
 	# Update Board to reflect the move, i.e. move out of bar, or bear, or move one spot to another, captures, etc...
 	# update self.bar, self.cur_player, self.beared_pieces
-	def apply_move(self, move):
-		#assert(self.is_legal_spot(self.get_pos(move.pos, move.num, self.cur_player)), self.cur_player)
+	def apply_move(self, move) -> None:
 		start_pos = move.pos
-		roll = move.num
-		hit = move.hit
-		end_pos = self.get_pos(move.pos, move.num, self.cur_player)
-		if not self.in_board(end_pos): # bear move
-			self.beared_pieces[self.cur_player] += 1
+		end_pos = self.get_pos_from_move(move)
+		cur_player = move.color
+		opp_player = self.opp_color(cur_player)
+		if start_pos == self.bar_pos:
+			self.bar[cur_player] -= 1
 		else:
+			self.update_board_pos(start_pos, cur_player, self.board[start_pos].num - 1)
+		if not self.in_board(end_pos): # bear move
+			self.beared_pieces[cur_player] += 1
+		elif move.hit:
 			# not bear move
-			return
-		self.cur_player 
-
+			self.update_board_pos(end_pos, cur_player, 1) # update the end position to have 1 piece of this type
+			self.bar[opp_player] += 1
+		else:
+			self.update_board_pos(end_pos, cur_player, self.board[end_pos].num + 1)
+		
+		
 
 	def undo_move(self, move):
 		pass
