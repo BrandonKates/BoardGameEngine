@@ -12,6 +12,22 @@ class BoardSquare(NamedTuple):
 	color: Color
 	num: int
 
+	def toString(self):
+		piece = ' '
+		if self.color == Color.LIGHT:
+			piece = 'o'
+		elif self.color == Color.DARK:
+			piece = 'x'
+		return piece * self.num
+
+	def toUnicode(self):
+		piece = ' '
+		if self.color == Color.LIGHT:
+			piece = '○'
+		elif self.color == Color.DARK:
+			piece = '●'
+		return piece * self.num
+
 class Direction(Enum):
 	LIGHT: 1
 	DARK: -1
@@ -30,7 +46,6 @@ def direction_from_color(color):
 		return -1
 
 
-
 class Backgammon:
 	def __init__(self):
 		self.board = [
@@ -45,6 +60,15 @@ class Backgammon:
 		self.checkers_per_side = 15
 		self.board_size = len(self.board)
 		self.beared_pieces = {Color.LIGHT: 0, Color.DARK: 0} # pieces that have moved off the board
+		self.die_unicode = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅']
+
+	def __str__(self):
+		s = ''
+		offset = self.board_size // 2
+		for i in range(offset):
+			s += self.board[i].toUnicode() + '\t' + self.board[self.board_size-i-1].toUnicode() + '\n'
+		return s
+
 
 	def ind_as_string(self, ind):
 		if self.in_board(ind):
@@ -60,6 +84,9 @@ class Backgammon:
 	def roll_turn(self):
 		roll1, roll2 = self.roll_die(), self.roll_die()
 		return max(roll1, roll2), min(roll1, roll2) # put the higher die first for simplicity (need to use higher die if possible)
+
+	def roll_to_die_unicode(self, roll):
+		return self.die_unicode[roll-1]
 
 	def at(self, point):
 		return self.board[point]
@@ -91,7 +118,7 @@ class Backgammon:
 		elif our_color is Color.DARK:
 			return Color.LIGHT
 		else:
-			assert(False, 'impossible outcome')
+			assert False, 'impossible outcome'
 
 	def set_start_player(self):
 		light = self.roll_die()
@@ -314,3 +341,31 @@ class Backgammon:
 		else:
 			self.moves_non_double(color, roll)
 
+
+
+''' 
+	Legal Singular Moves:
+		move to an open point (open: not more than one opposing checkers on spot)
+	Modifiers:
+		if piece of color on bar:
+			must move piece off first, check if more pieces on bar
+		elif able to bear:
+			bear moves are legal
+		else:
+			normal generation of moves
+
+	Recursive Procedure:
+		Start at furthest man from home
+		Scan towards home, stopping at squares with pieces of that color
+		First determine which state the board is in (what kinds of moves are legal)
+		apply the current die face to the piece 
+			if legal_moves:
+				update the board
+				call recursively for the remaining die faces, start the next scan at the furthest point from home
+			else:
+				continue to the next spot with a piece of correct color and try again
+
+
+
+
+'''
