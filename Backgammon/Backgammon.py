@@ -8,25 +8,29 @@ class Color(Enum):
 	DARK = 1
 	EMPTY = 2
 
+	def toUnicode(self):
+		if self == Color.LIGHT:
+			return '○'
+		if self == Color.DARK:
+			return '●'
+		return ' '
+	
+	def __str__(self):
+		if self == Color.LIGHT:
+			return 'o'
+		if self == Color.DARK:
+			return 'x'
+		return ' '
+
 class BoardSquare(NamedTuple):
 	color: Color
 	num: int
 
 	def toString(self):
-		piece = ' '
-		if self.color == Color.LIGHT:
-			piece = 'o'
-		elif self.color == Color.DARK:
-			piece = 'x'
-		return piece * self.num
+		return str(self.color) * self.num
 
 	def toUnicode(self):
-		piece = ' '
-		if self.color == Color.LIGHT:
-			piece = '○'
-		elif self.color == Color.DARK:
-			piece = '●'
-		return piece * self.num
+		return str(self.color.toUnicode()) * self.num
 
 class Direction(Enum):
 	LIGHT: 1
@@ -61,6 +65,8 @@ class Backgammon:
 		self.board_size = len(self.board)
 		self.beared_pieces = {Color.LIGHT: 0, Color.DARK: 0} # pieces that have moved off the board
 		self.die_unicode = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅']
+		self.dark_home = [0,1,2,3,4,5]
+		self.light_home = [18,19,20,21,22,23]
 
 	def __str__(self):
 		s = ''
@@ -69,6 +75,40 @@ class Backgammon:
 			s += self.board[i].toUnicode() + '\t' + self.board[self.board_size-i-1].toUnicode() + '\n'
 		return s
 
+	def toUnicode(self):
+		s = '_' * 15 + '\n'
+		mat = self.board_as_matrix()
+		for i in range(len(mat)):
+			if i == 5:
+				s += '│' + '═' * 6 + '╬' + '═' * 6 + '│' + '\n' #‾
+			for j in range(len(mat[0])):
+				if j == 0:
+					s += '│'
+				color = mat[i][j]
+				s += color.toUnicode()
+				if j == 5:
+					s += '║'
+				if j == 11:
+					s += '│'
+			s += '\n'
+		s += '‾' * 15 + '\n'
+		return s
+
+	def board_as_matrix(self):
+		matrix = [[Color.EMPTY] * 12 for i in range(10)]
+
+		for i in range(0, 12):
+			move = self.at(i)
+			if move.color != Color.EMPTY:
+				for k in range(move.num):
+					matrix[k][11-i] = move.color
+
+		for i in range(12, self.board_size):
+			move = self.at(i)
+			if move.color != Color.EMPTY:
+				for k in range(move.num):
+					matrix[9-k][i-12] = move.color
+		return matrix
 
 	def ind_as_string(self, ind):
 		if self.in_board(ind):
@@ -133,11 +173,17 @@ class Backgammon:
 
 	def color_in_bar(self, color):
 		assert(color != Color.EMPTY)
-		return bar[color] > 0
+		return self.bar[color] > 0
 
 	def num_in_bar(self, color):
 		assert(color != Color.EMPTY)
-		return bar[color]
+		return self.bar[color]
+
+	def color_home(self, color):
+		if color == Color.LIGHT:
+			return self.light_home
+		if color == Color.DARK:
+			return self.dark_home
 
 
 	def bar_start_ind(self, color):
@@ -152,9 +198,28 @@ class Backgammon:
 			pos = self.bar_start_ind(color)
 		return pos + direction_from_color(color) * roll
 
+	def get_pos_from_bar(self, roll, color):
+		return self.get_pos(self.bar_pos, roll, color)
+
 	def get_pos_from_move(self, move):
 		return self.get_pos(move.pos, move.num, move.color)
 
+	def get_start_pos(self, color):
+		if color == Color.LIGHT:
+			return 0
+		elif color == Color.DARK:
+			return self.board_size - 1
+
+	def able_to_bear(self, color):
+		if self.color_in_bar(color):
+			return False
+		total_pieces = self.beared_pieces[color]
+		for pos in self.color_home(color):
+			sq = self.at(pos)
+			if sq.color == color:
+				total_pieces += sq.num
+		print(total_pieces)
+		return total_pieces == self.checkers_per_side
 
 	def moves_to_dicts(self, moves) -> list:
 		rolls = [m.num for m in moves][:2] # only want the first two in the case we have doubles (more than 2 rolls, otherwise we always have <=2 moves)
@@ -162,7 +227,7 @@ class Backgammon:
 		for move in moves:
 			if move.pos:
 				dicts.append( {'pos' : [move.pos, self.get_pos_from_move(move)], \
-						   	   'hit' : [False, move.hit]})
+							   'hit' : [False, move.hit]})
 		return dicts
 
 	def dict_to_BAN(self, d):
@@ -340,6 +405,21 @@ class Backgammon:
 			self.moves_double(color, roll)
 		else:
 			self.moves_non_double(color, roll)
+
+	# Outer Loop
+	def moves_outer(self, rolls, color):
+		moves = []
+		num_in_bar = self.num_in_bar(color)
+		#if num_in_bar >= 2:
+		#for roll in rolls:
+
+	# Inner Loop
+	def get_move(self, roll, color):
+		if self.color_in_bar(color):
+			pos = self.get_pos_from_bar(roll, color)
+			#if self.is_legal_spot(pos, color):
+
+
 
 
 
