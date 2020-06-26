@@ -73,7 +73,7 @@ class Backgammon:
 		offset = self.board_size // 2
 		for i in range(offset):
 			s += self.board[i].toUnicode() + '\t' + self.board[self.board_size-i-1].toUnicode() + '\n'
-		return s
+		return self.toUnicode()
 
 	def toUnicode(self):
 		s = '_' * 15 + '\n'
@@ -100,14 +100,21 @@ class Backgammon:
 		for i in range(0, 12):
 			move = self.at(i)
 			if move.color != Color.EMPTY:
-				for k in range(move.num):
+				for k in range(min(move.num,5)):
 					matrix[k][11-i] = move.color
 
 		for i in range(12, self.board_size):
 			move = self.at(i)
 			if move.color != Color.EMPTY:
-				for k in range(move.num):
+				for k in range(min(move.num,5)):
 					matrix[9-k][i-12] = move.color
+		return matrix
+
+	def board_as_unicode_matrix(self):
+		matrix = self.board_as_matrix()
+		for i in range(len(matrix)):
+			for j in range(len(matrix[0])):
+				matrix[i][j] = matrix[i][j].toUnicode()
 		return matrix
 
 	def ind_as_string(self, ind):
