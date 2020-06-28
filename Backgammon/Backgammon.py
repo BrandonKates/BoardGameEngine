@@ -61,6 +61,7 @@ class Backgammon:
 		]
 		self.bar = {Color.LIGHT: 0, Color.DARK: 0}
 		self.bar_pos = 100
+		self.pass_pos = 101
 		self.checkers_per_side = 15
 		self.board_size = len(self.board)
 		self.beared_pieces = {Color.LIGHT: 0, Color.DARK: 0} # pieces that have moved off the board
@@ -72,7 +73,7 @@ class Backgammon:
 		self.turn_num = 1
 
 	def __str__(self):
-		s = "Turn %s" % str(self.turn_num)
+		s = "Turn %s\n" % str(self.turn_num)
 		bar_light = str(self.bar[Color.LIGHT])
 		bar_dark = str(self.bar[Color.DARK])
 		beared_light = str(self.beared_pieces[Color.LIGHT])
@@ -368,8 +369,8 @@ class Backgammon:
 
 
 
-	def moves_to_BAN(self, moves) -> str:
-		rolls = '%s-%s: ' % (moves[0].num, moves[1].num)
+	def moves_to_BAN(self, moves, dice) -> str:
+		rolls = '%s-%s: ' % (dice[0], dice[1]) #(moves[0].num, moves[1].num)
 		dicts = self.moves_to_dicts(moves)
 		if len(dicts) == 0:
 			return rolls + '(no play)'
@@ -543,43 +544,89 @@ class Backgammon:
 		
 		double_move = dice[0] == dice[1]
 		self.generate_legal_moves(self.cur_player, dice)
-		moves = policy()
 
+		moves = policy()
 		for move in moves:
 			self.apply_move(move)
 
 		if double_move:
 			self.generate_legal_moves(self.cur_player, dice)
-			moves = policy()
-			for move in moves:
+			double_moves = policy()
+			for move in double_moves:
 				self.apply_move(move)
-		return dice
+			moves.extend(double_moves)
+
+		self.turn_num += 1
+		self.cur_player = self.opp_color(self.cur_player)
+		return dice, moves
+
 
 	def play_game(self):
+		BAN_moves_logger = []
 		self.set_start_player()
 		game_over = False
-		dice = None
 		while not game_over:
-			if self.verbose:
-				print(self)
-				print("\nRolled: ", self.dice_to_unicode(dice))
-			dice = self.play_one_turn(self.random_policy)
-			self.turn_num += 1
-			self.cur_player = self.opp_color(self.cur_player)
+			dice, moves = self.play_one_turn(self.random_policy)
+			
 			game_over = self.beared_pieces[Color.LIGHT] == 15 or self.beared_pieces[Color.DARK] == 15
 
+			if self.verbose:
+				print("\nRolled: ", self.dice_to_unicode(dice))
+				BAN_move = self.moves_to_BAN(moves, dice)
+				BAN_moves_logger.append(BAN_move)
+				print(BAN_move)
+				print(self)
+
 		winner = Color.LIGHT if self.beared_pieces[Color.LIGHT] == 15 else Color.DARK
-		won_by = self.beared_pieces[winner], self.beared_pieces[self.opp_color(winner)]
+		score = self.beared_pieces[winner], self.beared_pieces[self.opp_color(winner)]
 		
 		if self.verbose:
-			print(self)
-			print("\nRolled: ", self.dice_to_unicode(dice))
-			print("The winner is %s!" % winner, won_by)
+			print("The winner is %s!" % winner, score)
+			for move in BAN_moves_logger:
+				print(move)
 		return winner
 
+	''' Use an encoding of the board in the following format:
+		the first 4*24 points encode the first players pieces on the board
+		the next  4*24 points encode the second players pieces on the board
+		the final 6 points are player bar, player beared, cur_player == player, opponent bar, opponent beared, cur_player == opponent
+	'''
+	def observation_tensor(self, player):
+		tensor = []
+		opponent = self.opp_color(player)
+
+		for sq in self.board:
+			num = sq.num
+			if sq.color == player:
+				tensor.append(int(num == 1))
+				tensor.append(int(num == 2))
+				tensor.append(int(num == 3))
+				tensor.append((num-3) if (num > 3) else 0)
+			else:
+				tensor.extend([0,0,0,0])
+		for sq in self.board:
+			num = sq.num
+			if sq.color == opponent:
+				tensor.append(int(num == 1))
+				tensor.append(int(num == 2))
+				tensor.append(int(num == 3))
+				tensor.append((num-3) if (num > 3) else 0)
+			else:
+				tensor.extend([0,0,0,0])
+
+		tensor.append(self.bar[player])
+		tensor.append(self.beared_pieces[player])
+		tensor.append(int(self.cur_player == player))
+
+		tensor.append(self.bar[opponent])
+		tensor.append(self.beared_pieces[opponent])
+		tensor.append(int(self.cur_player == opponent))
+
+		return tensor
 
 
-''' 
+
+	''' 
 	Legal Singular Moves:
 		move to an open point (open: not more than one opposing checkers on spot)
 	Modifiers:
@@ -600,8 +647,63 @@ class Backgammon:
 				call recursively for the remaining die faces, start the next scan at the furthest point from home
 			else:
 				continue to the next spot with a piece of correct color and try again
+	'''
+
+	'''
+		Number of Distinct Actions is 1352:
+		can have up to 25*26 + 25 + 26*26 moves
+		Encoded from {0, 1, ..., 1350, 1351}
+		base 26: {0, 1, ..., 23, bar_pos, pass_pos} => first 676 numbers
+	'''
+	def encode_checker_move(self, moves, dice):
+		dig0 = 25
+		dig1 = 25
+		high_roll_first = False
+		high_roll = max(dice)#moves[0].num if moves[0].num > moves[1].num else moves[1].num
+
+		if len(moves) != 0:
+			pos1 = moves[0].pos
+			if pos1 == self.bar_pos:
+				pos1 = 24
+			if pos1 != self.pass_pos:
+				num1 = moves[0].num
+				dig0 = pos1
+				high_roll_first = num1 == high_roll
+
+		if len(moves) > 1:
+			pos2 = moves[1].pos
+			if pos2 == self.bar_pos:
+				pos2 = 24
+			if pos2 != self.pass_pos:
+				dig1 = pos2
+
+		move = dig1 * 26 + dig0
+		if not high_roll_first:
+			move += 26*26
+		return move
 
 
+	def decode_checker_move(self, player, encoded_move, dice):
+		high_roll_first = encoded_move < 26*26
+		if not high_roll_first:
+			encoded_move -= 26*26
 
+		digits = (encoded_move % 26, encoded_move // 26)
 
-'''
+		moves = []
+		high_roll = dice[0]
+		low_roll = dice[1]
+
+		for i in range(0,2):
+			num = -1
+			if i == 0:
+				num = high_roll if high_roll_first else low_roll
+			else:
+				num = low_roll if high_roll_first else high_roll
+
+			if digits[i] == 25: # pass move
+				moves.append(Move(player,self.pass_pos, -1, False))
+			else:
+				pos = self.bar_pos if digits[i] == 24 else digits[i]
+				moves.append(Move(player, pos, num, False))
+		return moves
