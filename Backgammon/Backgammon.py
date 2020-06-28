@@ -50,6 +50,12 @@ def direction_from_color(color):
 		return -1
 
 
+# 0 -> 24
+# 1 -> 23
+# 2 -> 22
+# 3 -> 21
+# n -> 24-n
+
 class Backgammon:
 	def __init__(self):
 		self.board = [
@@ -60,13 +66,14 @@ class Backgammon:
 		]
 		self.bar = {Color.LIGHT: 0, Color.DARK: 0}
 		self.bar_pos = 100
-		self.cur_player = self.set_start_player()
 		self.checkers_per_side = 15
 		self.board_size = len(self.board)
 		self.beared_pieces = {Color.LIGHT: 0, Color.DARK: 0} # pieces that have moved off the board
 		self.die_unicode = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅']
-		self.dark_home = [0,1,2,3,4,5]
+		self.dark_home = [5,4,3,2,1,0]
 		self.light_home = [18,19,20,21,22,23]
+		self.moves = []
+		self.moves_list = []
 
 	def __str__(self):
 		s = ''
@@ -75,23 +82,26 @@ class Backgammon:
 			s += self.board[i].toUnicode() + '\t' + self.board[self.board_size-i-1].toUnicode() + '\n'
 		return self.toUnicode()
 
+
 	def toUnicode(self):
-		s = '_' * 15 + '\n'
+		s = ' 13 14 15 16 17 18  19 20 21 22 23 24\n'
+		s += '_' * 39 + '\n'
 		mat = self.board_as_matrix()
 		for i in range(len(mat)):
 			if i == 5:
-				s += '│' + '═' * 6 + '╬' + '═' * 6 + '│' + '\n' #‾
+				s += '│' + '═' * 18 + '╬' + '═' * 18 + '│' + '\n' #‾
 			for j in range(len(mat[0])):
 				if j == 0:
 					s += '│'
 				color = mat[i][j]
-				s += color.toUnicode()
+				s += color.toUnicode() + "  "
 				if j == 5:
 					s += '║'
 				if j == 11:
 					s += '│'
 			s += '\n'
-		s += '‾' * 15 + '\n'
+		s += '‾' * 39 + '\n'
+		s += ' 12 11 10 9  8  7   6  5  4  3  2  1'
 		return s
 
 	def board_as_matrix(self):
@@ -101,13 +111,13 @@ class Backgammon:
 			move = self.at(i)
 			if move.color != Color.EMPTY:
 				for k in range(min(move.num,5)):
-					matrix[k][11-i] = move.color
+					matrix[9-k][11-i] = move.color
 
 		for i in range(12, self.board_size):
 			move = self.at(i)
 			if move.color != Color.EMPTY:
 				for k in range(min(move.num,5)):
-					matrix[9-k][i-12] = move.color
+					matrix[k][i-12] = move.color
 		return matrix
 
 	def board_as_unicode_matrix(self):
@@ -141,6 +151,9 @@ class Backgammon:
 	def color_at(self, point):
 		return self.at(point).color
 
+	def player_at(self, point, color) -> bool:
+		return self.color_at(point) == color
+
 	def num_at(self, point):
 		return self.at(point).num
 
@@ -151,13 +164,27 @@ class Backgammon:
 		return self.color_at(point) == Color.EMPTY
 
 	def is_enemy(self, point, our_color):
-		return not is_empty(point) and self.color_at(point) != our_color
+		return not self.is_empty(point) and self.color_at(point) != our_color
 
 	def is_friendly(self, point, our_color):
 		return not self.is_enemy(point, our_color)
 
 	def is_legal_spot(self, point, our_color):
-		return is_empty(point) or self.color_at(point) == our_color or self.num_at(point) == 1
+		return point == self.bar_pos or self.is_empty(point) or self.color_at(point) == our_color or self.num_at(point) == 1
+
+	def is_hit(self, point, our_color):
+		return self.is_enemy(point, our_color) and self.num_at(point) == 1
+
+	def is_score_spot(self, point, our_color):
+		# for white this is > 23, for black this is < 0
+		if point == self.bar_pos:
+			return False
+		if our_color == Color.LIGHT:
+			return point > 23
+		if our_color == Color.DARK:
+			return point < 0
+		return False
+
 
 	def opp_color(self, our_color):
 		if our_color is Color.LIGHT:
@@ -170,12 +197,16 @@ class Backgammon:
 	def set_start_player(self):
 		light = self.roll_die()
 		dark = self.roll_die()
+		print("Player 1 (white) rolled: %s" % str(light))
+		print("Player 2 (black) rolled: %s" % str(light))
 		if light > dark:
 			self.cur_player = Color.LIGHT
+			print("Player 1 (white) goes first.")
 		elif dark > light:
 			self.cur_player = Color.DARK
+			print("Player 2 (black) goes first.")
 		else:
-			print("Players Rolled Same Numbers, rolling again...")
+			print("Players rolled same numbers, rolling again...")
 			self.set_start_player()
 
 	def color_in_bar(self, color):
@@ -201,9 +232,12 @@ class Backgammon:
 
 
 	def get_pos(self, pos, roll, color): # roll is a single value here
-		if pos == self.bar_pos:
+		if pos == self.bar_pos or pos == 'bar':
 			pos = self.bar_start_ind(color)
 		return pos + direction_from_color(color) * roll
+
+	def get_next_pos(self, pos, color):
+		return self.get_pos(pos, 1, color)
 
 	def get_pos_from_bar(self, roll, color):
 		return self.get_pos(self.bar_pos, roll, color)
@@ -225,8 +259,13 @@ class Backgammon:
 			sq = self.at(pos)
 			if sq.color == color:
 				total_pieces += sq.num
-		print(total_pieces)
 		return total_pieces == self.checkers_per_side
+
+	def furthest_checker_in_home(self, color):
+		home = self.color_home(color)
+		for point in home:
+			if self.player_at(point, color):
+				return point
 
 	def moves_to_dicts(self, moves) -> list:
 		rolls = [m.num for m in moves][:2] # only want the first two in the case we have doubles (more than 2 rolls, otherwise we always have <=2 moves)
@@ -393,18 +432,6 @@ class Backgammon:
 
 
 
-	def moves_non_double(self, color, roll):
-		direction = direction_from_color(color) # 1 for light, -1 for dark
-		if self.bar[color] > 0:
-			# must move both out, don't consider any other pieces
-			start_ind = self.bar_start_ind(color)
-			if self.is_legal_spot(start_ind + roll[0], color) and self.is_legal_spot(start_ind + roll[1], color):
-				return move_to_notation() 
-
-
-	def moves_double(self, color, roll):
-		pass
-
 	def get_legal_moves(self, color, roll):
 		direction = direction_from_color(color)
 
@@ -413,21 +440,81 @@ class Backgammon:
 		else:
 			self.moves_non_double(color, roll)
 
-	# Outer Loop
-	def moves_outer(self, rolls, color):
+
+	def remove_die(self, dice, die):
+		for i in range(len(dice)):
+			if die == dice[i]:
+				return dice[0:i] + dice[i+1:]
+
+
+	# Here we can implement logic that improves the engine, such as removing duplicate moves.
+	# This function should modify self.moves_list
+	def process_legal_checker_moves(player, dice):
+		return None
+
+
+	def generate_legal_moves(self, player, dice):
+		self.moves = []
+		self.moves_list = []
+		# updates self.moves_list
+		self.legal_checker_moves_outer(player, dice)
+		self.process_legal_checker_moves(player, dice)
+		
+
+
+	def legal_checker_moves_outer(self, player, dice):
+		if len(self.moves) == 2:
+			self.moves_list.append(self.moves)
+			return
+
+		legal_moves = self.legal_checker_moves(player, dice)
+
+		if len(legal_moves) == 0:
+			self.moves_list.append(self.moves)
+			return
+		for move in legal_moves:
+			self.moves.append(move)
+			self.apply_move(move)
+			new_dice = self.remove_die(dice, move.num)
+			self.legal_checker_moves_outer(player, new_dice)
+			self.undo_move(move)
+			self.moves = self.moves.copy()
+			self.moves.pop()
+		return
+
+	def legal_checker_moves(self, player, dice):
 		moves = []
-		num_in_bar = self.num_in_bar(color)
-		#if num_in_bar >= 2:
-		#for roll in rolls:
+		if self.num_in_bar(player) > 0:
+			# Must move checkers out of the bar
+			for roll in dice:
+				pos = self.get_pos_from_bar(roll, player)
+				if self.is_legal_spot(pos, player):
+					hit = self.is_hit(pos, player)
+					moves.append(Move(player, self.bar_pos, roll, hit))
+			return moves
 
-	# Inner Loop
-	def get_move(self, roll, color):
-		if self.color_in_bar(color):
-			pos = self.get_pos_from_bar(roll, color)
-			#if self.is_legal_spot(pos, color):
+		able_to_bear = self.able_to_bear(player)
+		pos = self.color_home(player)[0] if able_to_bear else self.get_start_pos(player)
+		while self.in_board(pos):
+			if self.player_at(pos, player):
+				for roll in dice:
+					next_pos = self.get_pos(pos, roll, player)
+					if self.is_score_spot(next_pos, player) and able_to_bear:
+						if player == Color.LIGHT and next_pos == 24 or \
+						   player == Color.DARK  and next_pos == -1:
+						   moves.append( Move(player, pos, roll, False) )
+						else:
+							if pos == self.furthest_checker_in_home(player):
+								moves.append( Move(player, pos, roll, False) )
+					elif pos != self.is_score_spot(next_pos, player) and self.in_board(next_pos) and self.is_legal_spot(next_pos, player):
+						hit = self.is_hit(next_pos, player)
+						moves.append( Move(player, pos, roll, hit) )
+			pos = self.get_next_pos(pos, player)
+		return moves
 
-
-
+	def playGame(self):
+		self.cur_player = self.set_start_player()
+		dice = self.roll_turn()
 
 
 ''' 
