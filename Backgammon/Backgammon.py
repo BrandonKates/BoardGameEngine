@@ -61,7 +61,8 @@ class Backgammon:
 		]
 		self.bar = {Color.LIGHT: 0, Color.DARK: 0}
 		self.bar_pos = 100
-		self.pass_pos = 101
+		self.pass_pos = 1001
+		self.off_pos = -100
 		self.checkers_per_side = 15
 		self.board_size = len(self.board)
 		self.beared_pieces = {Color.LIGHT: 0, Color.DARK: 0} # pieces that have moved off the board
@@ -71,6 +72,8 @@ class Backgammon:
 		self.moves = []
 		self.moves_list = []
 		self.turn_num = 1
+		self.double_turn = False
+		self.dice = (-1, -1)
 
 	def __str__(self):
 		s = "Turn %s\n" % str(self.turn_num)
@@ -156,8 +159,9 @@ class Backgammon:
 			return str(ind + 1)
 		if ind == self.bar_pos:
 			return 'bar'
-		else:
-			return 'off'
+		if ind == self.pass_pos:
+			return 'pass'
+		return 'off'
 
 	def roll_die(self):
 		return random.randint(1,6)
@@ -165,6 +169,9 @@ class Backgammon:
 	def roll_turn(self):
 		roll1, roll2 = self.roll_die(), self.roll_die()
 		return max(roll1, roll2), min(roll1, roll2) # put the higher die first for simplicity (need to use higher die if possible)
+
+	def roll_dice(self):
+		self.dice = self.roll_turn()
 
 	def roll_to_die_unicode(self, roll):
 		return self.die_unicode[roll-1]
@@ -302,8 +309,11 @@ class Backgammon:
 		rolls = [m.num for m in moves][:2] # only want the first two in the case we have doubles (more than 2 rolls, otherwise we always have <=2 moves)
 		dicts = []
 		for move in moves:
-			if move.pos:
-				dicts.append( {'pos' : [move.pos, self.get_pos_from_move(move)], \
+			if move.pos is not None:
+				end_pos = self.get_pos_from_move(move)
+				if not self.in_board(end_pos) and end_pos != self.bar_pos and end_pos != self.pass_pos:
+					end_pos = self.off_pos
+				dicts.append( {'pos' : [move.pos, end_pos], \
 							   'hit' : [False, move.hit]})
 		return dicts
 
@@ -321,7 +331,9 @@ class Backgammon:
 	def dicts_to_BAN_no_doubles(self, dicts) -> str:
 		rolls = ''
 		shared = self.check_shared(dicts[0], dicts[1])
-		if shared:
+		if self.check_equality(dicts[0], dicts[1]):
+			rolls += self.dict_to_BAN(dicts[0]) + "(2)"
+		elif shared:
 			rolls += self.dict_to_BAN(shared)
 		else:
 			rolls += self.dict_to_BAN(dicts[0]) + ' ' + self.dict_to_BAN(dicts[1])
@@ -349,9 +361,9 @@ class Backgammon:
 		j = 1
 		while 1 < len(dicts) and i < len(dicts):
 			while len(dicts) > 1 and j < len(dicts):
-				combine = self.check_equality(dicts[i], dicts[j]) # i<j
-				if combine:
-					dicts = [combine] + dicts[0:i] + dicts[i+1:j] + dicts[j+1:]
+				if self.check_equality(dicts[i], dicts[j]): # i<j:
+					dicts[i]['eq'] += dicts[j]['eq']
+					dicts = dicts[0:j] + dicts[j+1:]
 					i = 0
 					j = 1
 				else:
@@ -367,11 +379,19 @@ class Backgammon:
 			rolls += ' '
 		return rolls.strip()
 
-
+	def are_pass_moves(self, dicts) -> bool:
+		for d in dicts:
+			s = ''
+			if d['pos'][0] != self.pass_pos:
+				return False
+		return True
 
 	def moves_to_BAN(self, moves, dice) -> str:
 		rolls = '%s-%s: ' % (dice[0], dice[1]) #(moves[0].num, moves[1].num)
 		dicts = self.moves_to_dicts(moves)
+		if self.are_pass_moves(dicts):
+			print(dicts)
+			return rolls + '(no play)'
 		if len(dicts) == 0:
 			return rolls + '(no play)'
 		if len(dicts) == 1:
@@ -412,8 +432,7 @@ class Backgammon:
 		for t1_pos, t1_hit, t2_pos, t2_hit in zip(t1['pos'], t1['hit'], t2['pos'], t2['hit']):
 			if t1_pos != t2_pos or t1_hit != t2_hit:
 				return False
-		t1['eq'] += t2['eq']
-		return t1
+		return True
 
 
 	def update_board_pos(self, pos, color, amnt):
@@ -422,6 +441,7 @@ class Backgammon:
 			color = Color.EMPTY
 		self.board[pos] = BoardSquare(color, amnt)
 
+
 	# Update Board to reflect the move, i.e. move out of bar, or bear, or move one spot to another, captures, etc...
 	# update self.bar, self.cur_player, self.beared_pieces
 	def apply_move(self, move) -> None:
@@ -429,6 +449,8 @@ class Backgammon:
 		end_pos = self.get_pos_from_move(move)
 		cur_player = move.color
 		opp_player = self.opp_color(cur_player)
+		if start_pos == self.pass_pos:
+			return
 		if start_pos == self.bar_pos:
 			self.bar[cur_player] -= 1
 		else:
@@ -448,6 +470,8 @@ class Backgammon:
 		end_pos = self.get_pos_from_move(move)
 		cur_player = move.color
 		opp_player = self.opp_color(cur_player)
+		if start_pos == self.pass_pos:
+			return
 		if start_pos == self.bar_pos:
 			self.bar[cur_player] += 1
 		else:
@@ -462,6 +486,15 @@ class Backgammon:
 			self.update_board_pos(end_pos, cur_player, self.board[end_pos].num - 1)
 
 
+	def apply_action(self, action) -> None:
+		for move in self.decode_checker_move(action):
+			self.apply_move(move)
+
+
+	def undo_action(self, action) -> None:
+		for move in self.decode_checker_move(action):
+			self.undo_move(move)
+
 
 	def remove_die(self, dice, die):
 		for i in range(len(dice)):
@@ -471,38 +504,72 @@ class Backgammon:
 
 	# Here we can implement logic that improves the engine, such as removing duplicate moves.
 	# This function should modify self.moves_list
-	def process_legal_checker_moves(self, player, dice):
-		return None
+	def process_legal_checker_moves(self, player, max_moves):
+		if max_moves == 0:
+			return [[Move(player, self.pass_pos, -1, False), Move(player, self.pass_pos, -1, False)]]
+
+		legal_actions = []
+		max_roll = -1
+		for move in self.moves_list:
+			if max_moves == 2:
+				if len(move) == 2:
+					legal_actions.append(move)
+			elif max_moves == 1:
+				max_roll = max(max_roll, move[0].num)
+		
+		if max_moves == 1:
+			for move in self.moves_list:
+				if move[0].num == max_roll:
+					legal_actions.append(move)
+
+		return legal_actions
 
 
-	def generate_legal_moves(self, player, dice):
+	def get_legal_actions(self, player = None, dice = None):
+		if player is None:
+			player = self.cur_player
+		if dice is None:
+			dice = self.dice
+		self.generate_legal_moves(player, dice)
+		actions = []
+		for move in self.moves_list:
+			actions.append(self.encode_checker_move(move, dice))
+		return actions
+
+	def generate_legal_moves(self, player = None, dice = None):
+		if player is None:
+			player = self.cur_player
+		if dice is None:
+			dice = self.dice
 		self.moves = []
 		self.moves_list = []
 		# updates self.moves_list
-		self.legal_checker_moves_outer(player, dice)
-		self.process_legal_checker_moves(player, dice)
-		
-
+		max_moves = self.legal_checker_moves_outer(player, dice)
+		self.moves_list = self.process_legal_checker_moves(player, max_moves)
+	
 
 	def legal_checker_moves_outer(self, player, dice):
 		if len(self.moves) == 2:
 			self.moves_list.append(self.moves)
-			return
+			return len(self.moves)
 
 		legal_moves = self.legal_checker_moves(player, dice)
 
 		if len(legal_moves) == 0:
 			self.moves_list.append(self.moves)
-			return
+			return len(self.moves)
+
+		max_moves = -1
 		for move in legal_moves:
 			self.moves.append(move)
 			self.apply_move(move)
 			new_dice = self.remove_die(dice, move.num)
-			self.legal_checker_moves_outer(player, new_dice)
+			child_max = self.legal_checker_moves_outer(player, new_dice)
 			self.undo_move(move)
 			self.moves = self.moves.copy()
 			self.moves.pop()
-		return
+			max_moves = max(child_max, max_moves)
+		return max_moves
 
 	def legal_checker_moves(self, player, dice):
 		moves = []
@@ -539,18 +606,46 @@ class Backgammon:
 		return self.moves_list[i]
 
 
-	def play_one_turn(self, policy):
-		dice = self.roll_turn()
+	def game_over(self):
+		return self.beared_pieces[Color.LIGHT] == 15 or self.beared_pieces[Color.DARK] == 15
+
+	def get_reward(self, player):
+		if self.game_over():
+			winner = Color.LIGHT if self.beared_pieces[Color.LIGHT] == 15 else Color.DARK
+			if player == winner:
+				return 1
+			else:
+				return -1
+		return 0
+
+
+	def step(self, action):
+		double_move = self.dice[0] == self.dice[1]
+		self.apply_action(action)
+
+		# double_moive -> true when dice are e.g. 2-2,
+		# self.double_move -> true if already used one double
+		# if self.double_move -> true then swap player
+		if self.double_move or not double_move:
+			self.cur_player = self.opp_color(self.cur_player)
+		self.double_move = double_move and not self.double_move
+		self.turn_num += 1
 		
-		double_move = dice[0] == dice[1]
-		self.generate_legal_moves(self.cur_player, dice)
+		self.roll_dice() # updates the dice for the next turn
+		actions = self.get_legal_actions()
+
+	def play_one_turn(self, policy):
+		self.dice = self.roll_turn()
+		
+		double_move = self.dice[0] == self.dice[1]
+		self.generate_legal_moves()
 
 		moves = policy()
 		for move in moves:
 			self.apply_move(move)
 
 		if double_move:
-			self.generate_legal_moves(self.cur_player, dice)
+			self.generate_legal_moves()
 			double_moves = policy()
 			for move in double_moves:
 				self.apply_move(move)
@@ -558,7 +653,7 @@ class Backgammon:
 
 		self.turn_num += 1
 		self.cur_player = self.opp_color(self.cur_player)
-		return dice, moves
+		return self.dice, moves
 
 
 	def play_game(self):
@@ -573,8 +668,10 @@ class Backgammon:
 			if self.verbose:
 				print("\nRolled: ", self.dice_to_unicode(dice))
 				BAN_move = self.moves_to_BAN(moves, dice)
+				#print(self.moves_list)
 				BAN_moves_logger.append(BAN_move)
 				print(BAN_move)
+				#print(moves)
 				print(self)
 
 		winner = Color.LIGHT if self.beared_pieces[Color.LIGHT] == 15 else Color.DARK
@@ -655,7 +752,9 @@ class Backgammon:
 		Encoded from {0, 1, ..., 1350, 1351}
 		base 26: {0, 1, ..., 23, bar_pos, pass_pos} => first 676 numbers
 	'''
-	def encode_checker_move(self, moves, dice):
+	def encode_checker_move(self, moves, dice = None):
+		if dice is None:
+			dice = self.dice
 		dig0 = 25
 		dig1 = 25
 		high_roll_first = False
@@ -683,7 +782,11 @@ class Backgammon:
 		return move
 
 
-	def decode_checker_move(self, player, encoded_move, dice):
+	def decode_checker_move(self, encoded_move, player = None, dice = None):
+		if player is None:
+			player = self.cur_player
+		if dice is None:
+			dice = self.dice
 		high_roll_first = encoded_move < 26*26
 		if not high_roll_first:
 			encoded_move -= 26*26
@@ -702,8 +805,16 @@ class Backgammon:
 				num = low_roll if high_roll_first else high_roll
 
 			if digits[i] == 25: # pass move
-				moves.append(Move(player,self.pass_pos, -1, False))
+				moves.append(Move(player, self.pass_pos, -1, False))
 			else:
 				pos = self.bar_pos if digits[i] == 24 else digits[i]
 				moves.append(Move(player, pos, num, False))
 		return moves
+
+	def encoded_move_to_BAN(self, encoded_move, player = None, dice = None):
+		if player is None:
+			player = self.cur_player
+		if dice is None:
+			dice = self.dice
+		moves = self.decode_checker_move(encoded_move, player, dice)
+		return self.moves_to_BAN(moves, dice)
