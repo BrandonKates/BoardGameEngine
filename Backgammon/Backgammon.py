@@ -50,14 +50,9 @@ def direction_from_color(color):
 		return -1
 
 
-# 0 -> 24
-# 1 -> 23
-# 2 -> 22
-# 3 -> 21
-# n -> 24-n
-
 class Backgammon:
-	def __init__(self):
+	def __init__(self, verbose = True):
+		self.verbose = verbose
 		self.board = [
 		BoardSquare(Color.LIGHT, 2), BoardSquare(Color.EMPTY, 0), BoardSquare(Color.EMPTY, 0), BoardSquare(Color.EMPTY, 0), BoardSquare(Color.EMPTY, 0), BoardSquare(Color.DARK,  5),
 		BoardSquare(Color.EMPTY, 0), BoardSquare(Color.DARK,  3), BoardSquare(Color.EMPTY, 0), BoardSquare(Color.EMPTY, 0), BoardSquare(Color.EMPTY, 0), BoardSquare(Color.LIGHT, 5),
@@ -74,34 +69,62 @@ class Backgammon:
 		self.light_home = [18,19,20,21,22,23]
 		self.moves = []
 		self.moves_list = []
+		self.turn_num = 1
 
 	def __str__(self):
+		s = "Turn %s" % str(self.turn_num)
+		bar_light = str(self.bar[Color.LIGHT])
+		bar_dark = str(self.bar[Color.DARK])
+		beared_light = str(self.beared_pieces[Color.LIGHT])
+		beared_dark = str(self.beared_pieces[Color.DARK])
+
+		change = False
+		if len(bar_light) < len(beared_light):
+			bar_light = " " + bar_light
+			s += " "
+		elif len(beared_light) < len(bar_light):
+			beared_light = " " + beared_light
+			s += " "
+
+		if len(bar_dark) < len(beared_dark):
+			bar_dark = " " + bar_dark
+		elif len(beared_dark) < len(bar_dark):
+			beared_dark = " " + beared_dark
+		s +=  "         LIGHT│DARK\n"
+		s += "Bar:       %s  │  %s\n" % (bar_light, bar_dark)
+		s += "Beared:    %s  │  %s\n\n" % (beared_light, beared_dark)
+		s += self.toUnicode()
+		return s
+
+
+	def board_repr(self):
 		s = ''
 		offset = self.board_size // 2
 		for i in range(offset):
 			s += self.board[i].toUnicode() + '\t' + self.board[self.board_size-i-1].toUnicode() + '\n'
 		return self.toUnicode()
 
-
 	def toUnicode(self):
-		s = ' 13 14 15 16 17 18  19 20 21 22 23 24\n'
-		s += '_' * 39 + '\n'
+		s = ' 13 14 15 16 17 18 19 20 21 22 23 24\n'
+		s += '│┯  ┯  ┯  ┯  ┯  ┯   ┯  ┯  ┯  ┯  ┯  ┯│\n'
 		mat = self.board_as_matrix()
 		for i in range(len(mat)):
 			if i == 5:
-				s += '│' + '═' * 18 + '╬' + '═' * 18 + '│' + '\n' #‾
+				s += '│' + '═' * 17 + '╬' + '═' * 17 + '│' + '\n' #‾
 			for j in range(len(mat[0])):
 				if j == 0:
 					s += '│'
 				color = mat[i][j]
-				s += color.toUnicode() + "  "
+				s += color.toUnicode()
+				if j != len(mat[0]) - 1 and j != 5:
+					s += "  "
 				if j == 5:
-					s += '║'
+					s += ' ║ '
 				if j == 11:
 					s += '│'
 			s += '\n'
-		s += '‾' * 39 + '\n'
-		s += ' 12 11 10 9  8  7   6  5  4  3  2  1'
+		s += '│┷  ┷  ┷  ┷  ┷  ┷   ┷  ┷  ┷  ┷  ┷  ┷│\n'
+		s += ' 12 11 10 9  8  7   6  5  4  3  2  1\n'
 		return s
 
 	def board_as_matrix(self):
@@ -144,6 +167,9 @@ class Backgammon:
 
 	def roll_to_die_unicode(self, roll):
 		return self.die_unicode[roll-1]
+
+	def dice_to_unicode(self, dice):
+		return self.roll_to_die_unicode(dice[0]) + self.roll_to_die_unicode(dice[1])
 
 	def at(self, point):
 		return self.board[point]
@@ -197,16 +223,20 @@ class Backgammon:
 	def set_start_player(self):
 		light = self.roll_die()
 		dark = self.roll_die()
-		print("Player 1 (white) rolled: %s" % str(light))
-		print("Player 2 (black) rolled: %s" % str(light))
+		if self.verbose:
+			print("Player 1 (white) rolled: %s" % str(light))
+			print("Player 2 (black) rolled: %s" % str(dark))
 		if light > dark:
 			self.cur_player = Color.LIGHT
-			print("Player 1 (white) goes first.")
+			if self.verbose:
+				print("Player 1 (white) goes first.")
 		elif dark > light:
 			self.cur_player = Color.DARK
-			print("Player 2 (black) goes first.")
+			if self.verbose:
+				print("Player 2 (black) goes first.")
 		else:
-			print("Players rolled same numbers, rolling again...")
+			if self.verbose:
+				print("Players rolled same numbers, rolling again...")
 			self.set_start_player()
 
 	def color_in_bar(self, color):
@@ -432,15 +462,6 @@ class Backgammon:
 
 
 
-	def get_legal_moves(self, color, roll):
-		direction = direction_from_color(color)
-
-		if roll[0] == roll[1]:
-			self.moves_double(color, roll)
-		else:
-			self.moves_non_double(color, roll)
-
-
 	def remove_die(self, dice, die):
 		for i in range(len(dice)):
 			if die == dice[i]:
@@ -449,7 +470,7 @@ class Backgammon:
 
 	# Here we can implement logic that improves the engine, such as removing duplicate moves.
 	# This function should modify self.moves_list
-	def process_legal_checker_moves(player, dice):
+	def process_legal_checker_moves(self, player, dice):
 		return None
 
 
@@ -506,15 +527,56 @@ class Backgammon:
 						else:
 							if pos == self.furthest_checker_in_home(player):
 								moves.append( Move(player, pos, roll, False) )
-					elif pos != self.is_score_spot(next_pos, player) and self.in_board(next_pos) and self.is_legal_spot(next_pos, player):
+					elif not self.is_score_spot(next_pos, player) and self.in_board(next_pos) and self.is_legal_spot(next_pos, player):
 						hit = self.is_hit(next_pos, player)
 						moves.append( Move(player, pos, roll, hit) )
 			pos = self.get_next_pos(pos, player)
 		return moves
 
-	def playGame(self):
-		self.cur_player = self.set_start_player()
+	def random_policy(self):
+		i = random.randint(0, len(self.moves_list) - 1)
+		return self.moves_list[i]
+
+
+	def play_one_turn(self, policy):
 		dice = self.roll_turn()
+		
+		double_move = dice[0] == dice[1]
+		self.generate_legal_moves(self.cur_player, dice)
+		moves = policy()
+
+		for move in moves:
+			self.apply_move(move)
+
+		if double_move:
+			self.generate_legal_moves(self.cur_player, dice)
+			moves = policy()
+			for move in moves:
+				self.apply_move(move)
+		return dice
+
+	def play_game(self):
+		self.set_start_player()
+		game_over = False
+		dice = None
+		while not game_over:
+			if self.verbose:
+				print(self)
+				print("\nRolled: ", self.dice_to_unicode(dice))
+			dice = self.play_one_turn(self.random_policy)
+			self.turn_num += 1
+			self.cur_player = self.opp_color(self.cur_player)
+			game_over = self.beared_pieces[Color.LIGHT] == 15 or self.beared_pieces[Color.DARK] == 15
+
+		winner = Color.LIGHT if self.beared_pieces[Color.LIGHT] == 15 else Color.DARK
+		won_by = self.beared_pieces[winner], self.beared_pieces[self.opp_color(winner)]
+		
+		if self.verbose:
+			print(self)
+			print("\nRolled: ", self.dice_to_unicode(dice))
+			print("The winner is %s!" % winner, won_by)
+		return winner
+
 
 
 ''' 
