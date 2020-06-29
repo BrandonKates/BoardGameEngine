@@ -73,10 +73,12 @@ class Backgammon:
 		self.moves_list = []
 		self.turn_num = 1
 		self.double_turn = False
-		self.dice = (-1, -1)
+		self.dice = self.roll_dice()
+		self.set_start_player()
 
 	def __str__(self):
 		s = "Turn %s\n" % str(self.turn_num)
+		s += 'Rolled: %s\n ' % str(self.dice_to_unicode(self.dice))
 		bar_light = str(self.bar[Color.LIGHT])
 		bar_dark = str(self.bar[Color.DARK])
 		beared_light = str(self.beared_pieces[Color.LIGHT])
@@ -297,6 +299,7 @@ class Backgammon:
 			sq = self.at(pos)
 			if sq.color == color:
 				total_pieces += sq.num
+		assert total_pieces <= self.checkers_per_side
 		return total_pieces == self.checkers_per_side
 
 	def furthest_checker_in_home(self, color):
@@ -390,7 +393,6 @@ class Backgammon:
 		rolls = '%s-%s: ' % (dice[0], dice[1]) #(moves[0].num, moves[1].num)
 		dicts = self.moves_to_dicts(moves)
 		if self.are_pass_moves(dicts):
-			print(dicts)
 			return rolls + '(no play)'
 		if len(dicts) == 0:
 			return rolls + '(no play)'
@@ -488,12 +490,15 @@ class Backgammon:
 
 	def apply_action(self, action) -> None:
 		for move in self.decode_checker_move(action):
+			end_pos = self.get_pos_from_move(move)
+			if self.in_board(end_pos) and self.is_hit(end_pos, move.color):
+				move = Move(move.color, move.pos, move.num, True)
 			self.apply_move(move)
 
 
-	def undo_action(self, action) -> None:
-		for move in self.decode_checker_move(action):
-			self.undo_move(move)
+	#def undo_action(self, action) -> None:
+	#	for move in self.decode_checker_move(action):
+	#		self.undo_move(move)
 
 
 	def remove_die(self, dice, die):
@@ -609,30 +614,33 @@ class Backgammon:
 	def game_over(self):
 		return self.beared_pieces[Color.LIGHT] == 15 or self.beared_pieces[Color.DARK] == 15
 
-	def get_reward(self, player):
+	def get_reward_done(self, player):
+		reward = 0
+		done = False
 		if self.game_over():
+			done = True
 			winner = Color.LIGHT if self.beared_pieces[Color.LIGHT] == 15 else Color.DARK
 			if player == winner:
-				return 1
+				reward = 1
 			else:
-				return -1
-		return 0
+				reward = -1
+		return reward, done
 
 
 	def step(self, action):
-		double_move = self.dice[0] == self.dice[1]
 		self.apply_action(action)
-
-		# double_moive -> true when dice are e.g. 2-2,
-		# self.double_move -> true if already used one double
-		# if self.double_move -> true then swap player
-		if self.double_move or not double_move:
+		double_move = self.dice[0] == self.dice[1]
+		if self.double_turn or not double_move:
 			self.cur_player = self.opp_color(self.cur_player)
-		self.double_move = double_move and not self.double_move
-		self.turn_num += 1
+			self.turn_num += 1
+			self.roll_dice()
+		self.double_turn = double_move and not self.double_turn
 		
-		self.roll_dice() # updates the dice for the next turn
-		actions = self.get_legal_actions()
+		reward, done = self.get_reward_done(self.cur_player)
+		obs = self.observation_tensor(self.cur_player)
+		legal_actions = self.get_legal_actions() # generate the legal actions for the next step
+
+		return self.cur_player.value, obs, legal_actions, reward, done
 
 	def play_one_turn(self, policy):
 		self.dice = self.roll_turn()
@@ -668,10 +676,8 @@ class Backgammon:
 			if self.verbose:
 				print("\nRolled: ", self.dice_to_unicode(dice))
 				BAN_move = self.moves_to_BAN(moves, dice)
-				#print(self.moves_list)
 				BAN_moves_logger.append(BAN_move)
 				print(BAN_move)
-				#print(moves)
 				print(self)
 
 		winner = Color.LIGHT if self.beared_pieces[Color.LIGHT] == 15 else Color.DARK

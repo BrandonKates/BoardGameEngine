@@ -1,4 +1,4 @@
-from Backgammon import Backgammon
+from Backgammon.Backgammon import *
 
 class Env():
 	def __init__(self, state_space = 198, action_space = 1352):
@@ -8,7 +8,8 @@ class Env():
 
 	def reset(self):
 		self.game = Backgammon()
-		self.game.set_start_player()
+		return self.game.observation_tensor(self.game.cur_player), self.game.get_legal_actions()
 
 	def step(self, action):
-		pass
+		# player, obs, legal_actions, reward, done
+		return self.game.step(action)
