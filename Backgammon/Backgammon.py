@@ -22,6 +22,12 @@ class Color(Enum):
 			return 'x'
 		return ' '
 
+	def direction(self):
+		if self == Color.LIGHT:
+			return 1
+		if self == Color.DARK:
+			return -1
+
 class BoardSquare(NamedTuple):
 	color: Color
 	num: int
@@ -32,22 +38,12 @@ class BoardSquare(NamedTuple):
 	def toUnicode(self):
 		return str(self.color.toUnicode()) * self.num
 
-class Direction(Enum):
-	LIGHT: 1
-	DARK: -1
-
 
 class Move(NamedTuple): # pass is encoded (None,roll,false)
 	color: Color
 	pos: int # 0-23, bar=self.bar_pos
 	num: int # roll: 1-6
 	hit: bool # hit piece of opposite color
-
-def direction_from_color(color):
-	if color == Color.LIGHT:
-		return 1
-	elif color == Color.DARK:
-		return -1
 
 
 class Backgammon:
@@ -274,7 +270,7 @@ class Backgammon:
 	def get_pos(self, pos, roll, color): # roll is a single value here
 		if pos == self.bar_pos or pos == 'bar':
 			pos = self.bar_start_ind(color)
-		return pos + direction_from_color(color) * roll
+		return pos + color.direction() * roll
 
 	def get_next_pos(self, pos, color):
 		return self.get_pos(pos, 1, color)
@@ -606,6 +602,7 @@ class Backgammon:
 			pos = self.get_next_pos(pos, player)
 		return moves
 
+
 	def random_policy(self):
 		i = random.randint(0, len(self.moves_list) - 1)
 		return self.moves_list[i]
@@ -613,6 +610,7 @@ class Backgammon:
 
 	def game_over(self):
 		return self.beared_pieces[Color.LIGHT] == 15 or self.beared_pieces[Color.DARK] == 15
+
 
 	def get_reward_done(self, player):
 		reward = 0
