@@ -418,7 +418,7 @@ class Backgammon:
 		return True
 
 	def update_board_pos(self, pos, player, amnt):
-		assert amnt >= 0
+		assert(amnt >= 0)
 		if amnt == 0:
 			player = Player.EMPTY
 		self.board[pos] = BoardSquare(player, amnt)
@@ -434,20 +434,28 @@ class Backgammon:
 		if start_pos == self.pass_pos:
 			return
 		if start_pos == self.bar_pos:
+			assert self.bar[cur_player] >= 1
 			self.bar[cur_player] -= 1
 		else:
-			self.update_board_pos(start_pos, cur_player,
-								  self.board[start_pos].num - 1)
+			assert self.player_at(start_pos) == cur_player
+			assert self.num_at(start_pos) >= 1
+			self.update_board_pos(start_pos, cur_player, self.num_at(start_pos) - 1)
 		if not self.in_board(end_pos):  # bear move
+			assert end_pos != self.bar_pos
 			self.beared_pieces[cur_player] += 1
 		elif move.hit:
 			# not bear move
 			# update the end position to have 1 piece of this type
+			assert self.num_at(end_pos) == 1
+			assert self.player_at(end_pos) == opp_player
 			self.update_board_pos(end_pos, cur_player, 1)
 			self.bar[opp_player] += 1
 		else:
-			self.update_board_pos(end_pos, cur_player,
-								  self.board[end_pos].num + 1)
+			assert self.num_at(end_pos) >= 0
+			assert self.is_empty(end_pos) or self.player_at(end_pos) == cur_player
+			self.update_board_pos(end_pos, cur_player, self.num_at(end_pos) + 1)
+			assert self.num_at(end_pos) >= 1
+			assert self.player_at(end_pos) == cur_player
 
 	def undo_move(self, move):
 		start_pos = move.pos
@@ -456,20 +464,27 @@ class Backgammon:
 		opp_player = cur_player.opponent()
 		if start_pos == self.pass_pos:
 			return
-		if start_pos == self.bar_pos:
+		elif start_pos == self.bar_pos:
 			self.bar[cur_player] += 1
 		else:
-			self.update_board_pos(start_pos, cur_player,
-								  self.board[start_pos].num + 1)
+			assert self.num_at(start_pos) >= 0
+			assert self.player_at(start_pos) != opp_player
+			self.update_board_pos(start_pos, cur_player, self.at(start_pos).num + 1)
 		if not self.in_board(end_pos):
+			assert self.beared_pieces[cur_player] >= 1
 			self.beared_pieces[cur_player] -= 1
 		elif move.hit:
 			# not bear move
+			assert self.num_at(end_pos) == 1
+			assert self.player_at(end_pos) == cur_player
+			assert self.bar[opp_player] >= 1
 			self.update_board_pos(end_pos, opp_player, 1)
 			self.bar[opp_player] -= 1
 		else:
-			self.update_board_pos(end_pos, cur_player,
-								  self.board[end_pos].num - 1)
+			assert self.player_at(end_pos) == cur_player
+			assert self.num_at(end_pos) >= 1
+			self.update_board_pos(end_pos, cur_player, self.at(end_pos).num - 1)
+			assert self.player_at(end_pos) == Player.EMPTY or self.player_at(end_pos) == cur_player
 
 	def check_move_hit(self, move):
 		hit = False
@@ -483,27 +498,28 @@ class Backgammon:
 		moves = self.decode_checker_move(action)
 		fmh = False
 		smh = False
-		if len(moves) >= 1:
-			move, fmh = self.check_move_hit(moves[0])
-			self.apply_move(move)
-		if len(moves) == 2:
-			move, smh = self.check_move_hit(moves[1])
-			self.apply_move(move)
+		assert len(moves) == 2
+		move, fmh = self.check_move_hit(moves[0])
+		self.apply_move(move)
+		move, smh = self.check_move_hit(moves[1])
+		self.apply_move(move)
 
 		self.turn_history.append(Turn(self.cur_player, self.prev_player, self.dice, action, self.double_turn, fmh, smh))
 
-	def undo_action(self, player, action) -> None:
+	def undo_action(self, action) -> None:
 		last_turn = self.turn_history.pop()
-		print(last_turn)
 		assert last_turn.action == action
 		self.cur_player = last_turn.player
 		self.prev_player = last_turn.prev_player
 		self.dice = last_turn.dice
 		self.double_turn = last_turn.double_turn
 
-		moves = self.decode_checker_move(action, player)
-		moves[0] = Move(player, moves[0].pos, moves[0].num, last_turn.first_move_hit)
-		moves[1] = Move(player, moves[1].pos, moves[1].num, last_turn.second_move_hit)
+		#print(self.encoded_move_to_BAN(action, self.cur_player))
+
+		moves = self.decode_checker_move(action, self.cur_player)
+		moves[1] = Move(self.cur_player, moves[1].pos, moves[1].num, last_turn.second_move_hit)
+		moves[0] = Move(self.cur_player, moves[0].pos, moves[0].num, last_turn.first_move_hit)
+		
 		self.undo_move(moves[1])
 		self.undo_move(moves[0])
 
@@ -655,6 +671,7 @@ class Backgammon:
 		return reward, done
 
 	def step(self, action):
+		#print(self.encoded_move_to_BAN(action, self.cur_player, self.dice))
 		self.apply_action(action)
 		double_move = self.dice[0] == self.dice[1]
 		if self.double_turn or not double_move:
@@ -671,14 +688,8 @@ class Backgammon:
 
 		return self.cur_player.value, obs, legal_actions, reward
 
-	def step_back(self, action, player):
-		if player == 0:
-			player = Player.LIGHT
-		elif player == 1:
-			player = Player.DARK
-		else:
-			assert "invalid player", False
-		self.undo_action(player, action)
+	def step_back(self, action):
+		self.undo_action(action)
 		reward, done = self.get_reward_done(self.cur_player)
 		obs = self.observation_tensor(self.cur_player)
 		legal_actions = self.get_legal_actions()
