@@ -1,19 +1,24 @@
 from Backgammon import *
-from BackgammonModel import BackgammonModel
 
 import torch
 import numpy as np
 
-class Env():
-	def __init__(self, state_space = 198, action_space = 1352):
+from random import choice
+
+
+class Env:
+	def __init__(self, state_space = 198, action_space = 1352, verbose = False, max_turns = 300):
 		self.state_space = state_space
 		self.action_space = action_space
-		self.agents = [TDAgent(player = 0, net = BackgammonModel(198, 50, 1), env = self)]
+		self.verbose = verbose
+		self.max_turns = max_turns
 
+	def get_legal_actions(self):
+		return self.game.get_legal_actions()
 
 	def reset(self):
-		self.game = Backgammon()
-		return self.game.cur_player.value, self.game.observation_tensor(self.game.cur_player), self.game.get_legal_actions(), 0
+		self.game = Backgammon(verbose=self.verbose, max_turns = self.max_turns)
+		return self.game.cur_player, self.game.observation_tensor(self.game.cur_player), 0, False
 
 	def step(self, action):
 		# player, obs, legal_actions, reward, done
@@ -23,18 +28,40 @@ class Env():
 		return self.game.step_back(action)
 
 
-class TDAgent():
-	def __init__(self, player, net, env):
+class Agent:
+	def __init__(self, player):
 		self.player = player
+
+	def choose_best_action(self, actions):
+		raise NotImplementedError
+
+class RandomAgent(Agent):
+	def __init__(self, player):
+		super().__init__(player)
+
+	def choose_best_action(self, actions):
+		return choice(actions)
+
+class HumanAgent(Agent):
+	def __init__(self, player):
+		super().__init__(player)
+
+	def choose_best_action(self, actions):
+		pass
+
+class TDAgent(Agent):
+	def __init__(self, player, net, env):
+		super().__init__(player)
 		self.net = net
 		self.env = env
 
 	def choose_best_action(self, actions):
 		obs_ = []
 		for a in actions:
-			_, obs, _, _ = self.env.step(a)
+			_, _, obs, _, _ = self.env.step(a)
 			_ = self.env.step_back(a)
 			obs_.append(obs)
 		values = self.net(torch.FloatTensor(obs_)).detach().numpy()
-		best_ind = int(values.argmax()) if self.player == 0 else int(values.argmin())
+		best_ind = int(values.argmax()) if self.player == self.env.game.cur_player else int(values.argmin())
 		return actions[best_ind]
+

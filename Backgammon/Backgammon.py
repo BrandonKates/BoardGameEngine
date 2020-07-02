@@ -64,7 +64,7 @@ class Turn(NamedTuple):
 	second_move_hit: bool
 
 class Backgammon:
-	def __init__(self, verbose=True, max_turns = 200):
+	def __init__(self, verbose=True, max_turns = 500):
 		self.verbose = verbose
 		self.board = [
 			BoardSquare(Player.LIGHT, 2), BoardSquare(Player.EMPTY, 0), BoardSquare(Player.EMPTY, 0), BoardSquare(
@@ -653,22 +653,26 @@ class Backgammon:
 		return self.moves_list[i]
 
 	def game_over(self):
-		return self.beared_pieces[Player.LIGHT] == 15 or self.beared_pieces[Player.DARK] == 15 or self.turn_num >= self.max_turns
+		if self.beared_pieces[Player.LIGHT] == 15:
+			return True, Player.LIGHT
+		elif self.beared_pieces[Player.DARK] == 15:
+			return True, Player.DARK
+		elif self.turn_num >= self.max_turns:
+			return True, Player.EMPTY
+		else:
+			return False, Player.EMPTY
 
 	def get_reward_done(self, player):
 		reward = 0
 		done = False
-		if self.game_over():
+		game_over, winner = self.game_over()
+		if game_over:
 			done = True
-			max_turns_exceeded = self.turn_num >= self.max_turns
-			winner = Player.LIGHT if self.beared_pieces[Player.LIGHT] == 15 else Player.DARK
 			if player == winner:
 				reward = 1
-			elif player.opponent() == winner:
-				reward = -1
-			elif self.turn_num >= self.max_turns:
+			elif player.opponent() == winner or self.turn_num >= self.max_turns:
 				reward = 0
-		return reward, done
+		return reward, done, winner
 
 	def step(self, action):
 		#print(self.encoded_move_to_BAN(action, self.cur_player, self.dice))
@@ -679,22 +683,18 @@ class Backgammon:
 			self.cur_player = self.cur_player.opponent()
 			self.turn_num += 1
 			self.roll_dice()
+
 		self.double_turn = double_move and not self.double_turn
 
-		reward, done = self.get_reward_done(self.cur_player)
+		reward, done, winner = self.get_reward_done(self.cur_player)
 		obs = self.observation_tensor(self.cur_player)
-		# generate the legal actions for the next step
-		legal_actions = self.get_legal_actions()
-
-		return self.cur_player.value, obs, legal_actions, reward
+		return self.cur_player, winner, obs, reward, done
 
 	def step_back(self, action):
 		self.undo_action(action)
-		reward, done = self.get_reward_done(self.cur_player)
+		reward, done, winner = self.get_reward_done(self.cur_player)
 		obs = self.observation_tensor(self.cur_player)
-		legal_actions = self.get_legal_actions()
-		return self.cur_player.value, obs, legal_actions, reward
-
+		return winner, obs, reward, done
 
 
 	def play_one_turn(self, policy):
@@ -723,7 +723,7 @@ class Backgammon:
 		game_over = False
 		while not game_over:
 			dice, moves = self.play_one_turn(self.random_policy)
-			game_over = self.game_over()
+			game_over, winner = self.game_over()
 
 			if self.verbose:
 				print("\nRolled: ", self.dice_to_unicode(dice))
@@ -732,14 +732,13 @@ class Backgammon:
 				print(BAN_move)
 				print(self)
 
-		winner = Player.LIGHT if self.beared_pieces[Player.LIGHT] == 15 else Player.DARK
 		score = self.beared_pieces[winner], self.beared_pieces[winner.opponent()]
 
 		if self.verbose:
 			print("The winner is %s!" % winner, score)
 			for move in BAN_moves_logger:
 				print(move)
-		return winner
+		return winner, self.turn_num
 
 	''' Use an encoding of the board in the following format:
 		the first 4*24 points encode the first players pieces on the board
