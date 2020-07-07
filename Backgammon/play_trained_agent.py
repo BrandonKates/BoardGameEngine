@@ -4,12 +4,12 @@ from BackgammonModel import BackgammonModel
 
 model = BackgammonModel( \
     input_size = 198,
-    hidden_size = 50,
+    hidden_size = sys.argv[2],
     output_size = 1,
     trace_decay = 0,
     alpha = 0.1,
     save_interval = 1000,
-    saved_model = sys.argv[1], #'./checkpoints/checkpoint_181000.pt',
+    saved_model = sys.argv[1], #'./checkpoints/50/checkpoint_181000.pt',
     eval_interval = 1000
 )
 

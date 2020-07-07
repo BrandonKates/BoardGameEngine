@@ -90,6 +90,7 @@ class TDAgent(Agent):
 			_ = self.env.step_back(a)
 			obs_.append(obs)
 		values = self.net(torch.FloatTensor(obs_)).detach().numpy()
-		best_ind = int(values.argmax()) if self.player == self.env.game.cur_player else int(values.argmin())
+		# the network output is the probability of white winning from the current position, so we choose max for white's turn and min for black
+		best_ind = int(values.argmax()) if self.player == Player.LIGHT else int(values.argmin())
 		return actions[best_ind]
 

@@ -1,1 +1,1 @@
-python -u train_model.py --start_episode $1 --episodes $2 --load_model $3 > ./log/backgammon$1_$2.out 2> ./log/backgammon$1_$2.err &
+python -u train_model.py --start_episode $1 --episodes $2 --load_model $3 --hidden $4 > ./log/backgammon$1_$2.out 2> ./log/backgammon$1_$2.err &

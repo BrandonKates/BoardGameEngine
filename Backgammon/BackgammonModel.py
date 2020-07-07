@@ -27,9 +27,14 @@ class BackgammonModel(nn.Module):
 		self.z = [torch.zeros(weights.shape, requires_grad = False) for weights in list(self.parameters())]
 
 		self.save_interval = save_interval
-		self.save_location = save_location
+		self.save_location = os.path.join(save_location, str(hidden_size))
 		self.saved_model = saved_model
 		self.eval_interval = eval_interval
+
+		self.env = Env()
+		if self.saved_model:
+			self.load_state_dict(torch.load(self.saved_model))
+			print("Loading saved model: %s" % self.saved_model)
 
 	def forward(self, x):
 		x = self.fc1(x)
@@ -37,18 +42,17 @@ class BackgammonModel(nn.Module):
 		return x
 	
 	def train(self, start_episode, num_episodes):
-		if self.saved_model:
-			self.load_state_dict(torch.load(self.saved_model))
-
-		self.env = Env()
-		agent = TDAgent(player = Player.LIGHT, net = self, env = self.env)
+		agents = {Player.LIGHT: TDAgent(player = Player.LIGHT, net = self, env = self.env),
+				  Player.DARK:  TDAgent(player = Player.DARK,  net = self, env = self.env)}
 		cur_player = None
 		wins = {Player.LIGHT: 0, Player.DARK: 0, Player.EMPTY: 0}
 		score = 0
 		tot_turns = 0
 
 		for episode in tqdm(range(start_episode, start_episode + num_episodes + 1)):
+
 			cur_player, obs, reward, done = self.env.reset()
+			agent = agents[cur_player]
 			
 			while not done:
 				p_t = self(torch.FloatTensor(obs))
@@ -59,6 +63,9 @@ class BackgammonModel(nn.Module):
 
 				if not done:
 					loss = self.update_weights(p_t, p_t1)
+
+				agent = agents[cur_player]
+
 			if winner == agent.player:
 				reward = 1
 			else:
@@ -80,11 +87,7 @@ class BackgammonModel(nn.Module):
 		print("Total Reward: ", score)
 		print("Average Turns: ", tot_turns // num_episodes)
 
-	def evaluate(self, env, agents, num_episodes = 100, model = None):
-		if model is not None:
-			self.load_state_dict(torch.load(model))
-			print("(Eval) loading saved model: %s" % model)
-
+	def evaluate(self, env, agents, num_episodes = 100):
 		wins = {Player.LIGHT: 0, Player.DARK: 0, Player.EMPTY: 0}
 		cur_player = None
 

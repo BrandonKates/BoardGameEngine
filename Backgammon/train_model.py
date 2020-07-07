@@ -11,11 +11,12 @@ if __name__ == "__main__":
 	parser.add_argument('--start_episode', '-s', type=int, default=1)
 	parser.add_argument('--episodes', '-e', type=int, default=100000)
 	parser.add_argument('--load_model', '-l', type=str, default=None)
+	parser.add_argument('--hidden', type=int)
 	args = parser.parse_args()
 
 	model = BackgammonModel( \
 		input_size = 198,
-		hidden_size = 50,
+		hidden_size = args.hidden,
 		output_size = 1,
 		trace_decay = 0.7,
 		alpha = 0.1,

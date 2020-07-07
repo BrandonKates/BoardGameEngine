@@ -76,6 +76,14 @@ class Backgammon:
 			BoardSquare(Player.LIGHT, 5), BoardSquare(Player.EMPTY, 0), BoardSquare(Player.EMPTY, 0), BoardSquare(
 				Player.EMPTY, 0), BoardSquare(Player.EMPTY, 0), BoardSquare(Player.DARK,  2)
 		]
+		'''self.board = {Player.LIGHT:[2,0,0,0,0,0,
+									0,0,0,0,0,5,
+									0,0,0,0,3,0,
+									5,0,0,0,0,0],
+					  Player.DARK: [0,0,0,0,0,5,
+					  				0,3,0,0,0,0,
+					  				5,0,0,0,0,0,
+					  				0,0,0,0,0,2]}'''
 		self.bar = {Player.LIGHT: 0, Player.DARK: 0}
 		self.bar_pos = 100
 		self.pass_pos = 1001
@@ -643,9 +651,10 @@ class Backgammon:
 			return moves
 
 		able_to_bear = self.able_to_bear(player)
-		pos = self.player_home(
-			player)[0] if able_to_bear else self.get_start_pos(player)
-		while self.in_board(pos):
+		pos = self.player_home(player)[0] if able_to_bear else self.get_start_pos(player)
+
+		for pos in range(self.board_size):
+		#while self.in_board(pos):
 			if self.player_at(pos) == player:
 				for roll in dice:
 					next_pos = self.get_pos(pos, roll, player)
@@ -659,7 +668,7 @@ class Backgammon:
 					elif not self.is_score_spot(next_pos, player) and self.in_board(next_pos) and self.is_legal_spot(next_pos, player):
 						hit = self.is_hit(next_pos, player)
 						moves.append(Move(player, pos, roll, hit))
-			pos = self.get_next_pos(pos, player)
+			#pos = self.get_next_pos(pos, player)
 		return moves
 
 	def random_policy(self):
