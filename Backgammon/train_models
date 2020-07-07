@@ -1,0 +1,2 @@
+taskset --cpu-list 0,1,2,3  python -OO -u train_model.py --start_episode 67001 --episodes 200000 --hidden 100 --load_model ./checkpoints/100/checkpoint_67000.pt  > ./log/backgammon_100.out 2> ./log/backgammon_100.err &
+taskset --cpu-list 4,5,6,7  python -OO -u train_model.py --start_episode 56001 --episodes 200000 --hidden 200 --load_model ./checkpoints/200/checkpoint_56000.pt > ./log/backgammon_200.out 2> ./log/backgammon_200.err &
