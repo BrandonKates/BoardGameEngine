@@ -3,7 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import os
 
-from tqdm import tqdm_notebook as tqdm
+#from tqdm import tqdm_notebook as tqdm
+from tqdm import tqdm
 
 from BackgammonRLEnv import Env, RandomAgent, TDAgent, HumanAgent
 from Backgammon import Player
@@ -79,10 +80,10 @@ class BackgammonModel(nn.Module):
 		print("Total Reward: ", score)
 		print("Average Turns: ", tot_turns // num_episodes)
 
-	def evaluate(self, env, agents, num_episodes = 100):
-		if self.saved_model:
-			self.load_state_dict(torch.load(self.saved_model))
-			print("loading saved model: %s" % self.saved_model)
+	def evaluate(self, env, agents, num_episodes = 100, model = None):
+		if model is not None:
+			self.load_state_dict(torch.load(model))
+			print("(Eval) loading saved model: %s" % model)
 
 		wins = {Player.LIGHT: 0, Player.DARK: 0, Player.EMPTY: 0}
 		cur_player = None
