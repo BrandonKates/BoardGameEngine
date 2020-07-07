@@ -5,7 +5,7 @@ import os
 
 from tqdm import tqdm_notebook as tqdm
 
-from BackgammonRLEnv import Env, RandomAgent, TDAgent
+from BackgammonRLEnv import Env, RandomAgent, TDAgent, HumanAgent
 from Backgammon import Player
 
 class BackgammonModel(nn.Module):
@@ -40,7 +40,7 @@ class BackgammonModel(nn.Module):
 			self.load_state_dict(torch.load(self.saved_model))
 
 		self.env = Env()
-		self.agent = TDAgent(player = Player.LIGHT, net = self, env = self.env)
+		agent = TDAgent(player = Player.LIGHT, net = self, env = self.env)
 		cur_player = None
 		wins = {Player.LIGHT: 0, Player.DARK: 0, Player.EMPTY: 0}
 		score = 0
@@ -52,26 +52,26 @@ class BackgammonModel(nn.Module):
 			while not done:
 				p_t = self(torch.FloatTensor(obs))
 				legal_actions = self.env.get_legal_actions()
-				a = self.agent.choose_best_action(legal_actions)
+				a = agent.choose_best_action(legal_actions)
 				cur_player, winner, obs, reward, done = self.env.step(a)
 				p_t1 = self(torch.FloatTensor(obs))
 
 				if not done:
-					self.update_weights(p_t, p_t1)
-			if winner == self.agent.player:
+					loss = self.update_weights(p_t, p_t1)
+			if winner == agent.player:
 				reward = 1
 			else:
 				reward = 0
-			self.update_weights(p_t, reward)
-			
+			loss = self.update_weights(p_t, reward)
+
 			wins[winner] += 1
 			tot_turns += self.env.game.turn_num
 			score += reward
 
 			if episode % self.eval_interval == 0:
-				wins = self.evaluate(self.env, {Player.LIGHT: TDAgent(player = Player.LIGHT, net = self, env = self.env),
+				eval_wins = self.evaluate(self.env, {Player.LIGHT: TDAgent(player = Player.LIGHT, net = self, env = self.env),
 										 	    Player.DARK: RandomAgent(player = Player.DARK)})
-				print("Eval, Episode: %s, Wins: %s" % (episode, str(wins)))
+				print("Eval, Episode: %s, Wins: %s" % (episode, str(eval_wins)))
 			if episode % self.save_interval == 0:
 				torch.save(self.state_dict(), os.path.join(self.save_location, 'checkpoint_%s.pt' % episode))
 		
@@ -88,18 +88,14 @@ class BackgammonModel(nn.Module):
 		cur_player = None
 
 		for episode in tqdm(range(0, num_episodes)):
-			cur_player, obs, reward, done = self.env.reset()
+			cur_player, obs, reward, done = env.reset()
 			
 			while not done:
 				agent = agents[cur_player]
-				p_t = self(torch.FloatTensor(obs))
 				legal_actions = env.get_legal_actions()
-				a = self.agent.choose_best_action(legal_actions)
-				
+				a = agent.choose_best_action(legal_actions)
 				cur_player, winner, obs, reward, done = env.step(a)
-				
-				p_t1 = self(torch.FloatTensor(obs))
-			
+							
 			wins[winner] += 1
 		return wins
 
@@ -130,10 +126,23 @@ class BackgammonModel(nn.Module):
 	'''
 
 
-	def play_against_agent(self, model):
-		self.load_state_dict(torch.load(model))
+	def play_against_agent(self):
+		if self.saved_model:
+			self.load_state_dict(torch.load(self.saved_model))
+			print("loading saved model: %s" % self.saved_model)
 		env = Env(verbose=True, max_turns = 100000)
 		agents = {	
-			Player.LIGHT: HumanAgent(Player.LIGHT),
-			Player.DARK:  TDAgent(player.DARK, net = self, env = env)
+			Player.LIGHT: HumanAgent(Player.LIGHT, env = env),
+			Player.DARK:  TDAgent(Player.DARK, net = self, env = env)
 			}
+		cur_player, obs, reward, done = env.reset()
+	
+		while not done:
+			agent = agents[cur_player]
+			legal_actions = env.get_legal_actions()
+			print(env.game_repr())
+			a = agent.choose_best_action(legal_actions)
+			cur_player, winner, obs, reward, done = env.step(a)
+		
+		print(env.game_repr())
+		print("Game Over: Winner is %s!" % winner)

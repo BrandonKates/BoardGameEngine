@@ -13,6 +13,9 @@ class Env:
 		self.verbose = verbose
 		self.max_turns = max_turns
 
+	def game_repr(self):
+		return str(self.game)
+
 	def get_legal_actions(self):
 		return self.game.get_legal_actions()
 
@@ -26,6 +29,10 @@ class Env:
 
 	def step_back(self, action):
 		return self.game.step_back(action)
+
+	def check_human_input_legal(self, input, legal_actions, player):
+		action = self.game.input_to_move(input, player)
+		return action if action in legal_actions else False
 
 
 class Agent:
@@ -42,12 +49,33 @@ class RandomAgent(Agent):
 	def choose_best_action(self, actions):
 		return choice(actions)
 
+
+# Accept inputs of type, 'start_pos1, roll1; start_pos2, roll2'...
+# returns list of [start_pos, roll] for each move
+def parse_input(string) -> list:
+	if string == 'pass':
+		return string
+	return [m.split(',') for m in string.replace(' ', '').split(';')]
+
+
 class HumanAgent(Agent):
-	def __init__(self, player):
+	def __init__(self, player, env):
 		super().__init__(player)
+		self.env = env
 
 	def choose_best_action(self, actions):
-		pass
+		action = False
+		while action is False:
+			try:
+				string = input("Input valid move:\n")
+				action = self.env.check_human_input_legal(parse_input(string), actions, player = self.player)
+			except KeyboardInterrupt:
+				exit()
+			except:
+				print("Invalid Action: Try again")
+		return action
+
+
 
 class TDAgent(Agent):
 	def __init__(self, player, net, env):

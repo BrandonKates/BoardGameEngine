@@ -101,7 +101,6 @@ class Backgammon:
 
 	def __str__(self):
 		s = "Turn %s\n" % str(self.turn_num)
-		s += 'Rolled: %s\n ' % str(self.dice_to_unicode(self.dice))
 		bar_light = str(self.bar[Player.LIGHT])
 		bar_dark = str(self.bar[Player.DARK])
 		beared_light = str(self.beared_pieces[Player.LIGHT])
@@ -119,10 +118,11 @@ class Backgammon:
 			bar_dark = " " + bar_dark
 		elif len(beared_dark) < len(bar_dark):
 			beared_dark = " " + beared_dark
-		s +=   "        LIGHT│DARK\n"
+		s +=  "         LIGHT│DARK\n"
 		s += "Bar:       %s  │  %s\n" % (bar_light, bar_dark)
 		s += "Beared:    %s  │  %s\n\n" % (beared_light, beared_dark)
 		s += self.to_unicode()
+		s += 'Rolled: %s\n ' % str(self.dice_to_unicode(self.dice))
 		return s
 
 	def board_repr(self):
@@ -197,7 +197,7 @@ class Backgammon:
 		self.dice = max(roll1, roll2), min(roll1, roll2)
 
 	def dice_to_unicode(self, dice):
-		return self.die_unicode[dice[0]-1] + self.die_unicode[dice[1]-1]
+		return self.die_unicode[dice[0]-1] + " " + self.die_unicode[dice[1]-1]
 
 	def at(self, point):
 		return self.board[point]
@@ -287,6 +287,20 @@ class Backgammon:
 			return 0
 		elif player == Player.DARK:
 			return self.board_size - 1
+
+	def input_to_move(self, positions, player) -> list:
+		if positions == 'pass':
+			moves = [Move(player, self.pass_pos, -1, False), Move(player, self.pass_pos, -1, False)]
+			return self.encode_checker_move(moves)
+		moves = []
+		for start_pos, roll in positions:
+			if start_pos == 'bar':
+				start_pos = self.bar_pos
+			else:
+				start_pos = int(start_pos) - 1
+			roll = int(roll)
+			moves.append(Move(player, start_pos, roll, False))
+		return self.encode_checker_move(moves)
 
 	def moves_to_dicts(self, moves) -> list:
 		# only want the first two in the case we have doubles (more than 2 rolls, otherwise we always have <=2 moves)
