@@ -209,7 +209,7 @@ class Backgammon:
 		return self.die_unicode[dice[0]-1] + " " + self.die_unicode[dice[1]-1]
 
 	def at(self, player, point):
-		assert not (self.board[0][point] > 0 and self.board[1][point] > 0) 
+		#assert not (self.board[0][point] > 0 and self.board[1][point] > 0) 
 		return self.board[player.value][point]
 
 	def player_at(self, point) -> Player:
@@ -264,7 +264,6 @@ class Backgammon:
 			self.set_start_player()
 
 	def num_in_bar(self, player):
-		assert(player != Player.EMPTY)
 		return self.bar[player]
 
 	def player_home(self, player):
@@ -693,7 +692,6 @@ class Backgammon:
 		return reward, done, winner
 
 	def step(self, action):
-		#print(self.encoded_move_to_BAN(action, self.cur_player, self.dice))
 		self.apply_action(action)
 		double_move = self.dice[0] == self.dice[1]
 		if self.double_turn or not double_move:
@@ -769,18 +767,24 @@ class Backgammon:
 		opponent = player.opponent()
 
 		for pos in range(self.board_size):
-			num = self.at(player, pos)
-			tensor.append(int(num == 1))
-			tensor.append(int(num == 2))
-			tensor.append(int(num == 3))
-			tensor.append((num-3) if (num > 3) else 0)
+			num = self.board[player.value][pos]
+			if num == 0:
+				tensor.extend([0,0,0,0])
+			else:
+				tensor.append(int(num == 1))
+				tensor.append(int(num == 2))
+				tensor.append(int(num == 3))
+				tensor.append((num-3) if (num > 3) else 0)
 		
 		for pos in range(self.board_size):
 			num = self.at(opponent, pos)
-			tensor.append(int(num == 1))
-			tensor.append(int(num == 2))
-			tensor.append(int(num == 3))
-			tensor.append((num-3) if (num > 3) else 0)
+			if num == 0:
+				tensor.extend([0,0,0,0])
+			else:
+				tensor.append(int(num == 1))
+				tensor.append(int(num == 2))
+				tensor.append(int(num == 3))
+				tensor.append((num-3) if (num > 3) else 0)
 
 		tensor.append(self.bar[player])
 		tensor.append(self.beared_pieces[player])
