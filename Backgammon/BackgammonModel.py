@@ -42,10 +42,10 @@ class BackgammonModel(nn.Module):
 		return x
 	
 	def train(self, start_episode, num_episodes):
-		agents = {Player.LIGHT: TDAgent(player = Player.LIGHT, net = self, env = self.env),
-				  Player.DARK:  TDAgent(player = Player.DARK,  net = self, env = self.env)}
+		agents = [TDAgent(player = 0, net = self, env = self.env),
+				  TDAgent(player = 1,  net = self, env = self.env)]
 		cur_player = None
-		wins = {Player.LIGHT: 0, Player.DARK: 0, Player.EMPTY: 0}
+		wins = {0: 0, 1: 0, Player.EMPTY: 0}
 		score = 0
 		tot_turns = 0
 
@@ -77,8 +77,8 @@ class BackgammonModel(nn.Module):
 			score += reward
 
 			if episode % self.eval_interval == 0:
-				eval_wins = self.evaluate(self.env, {Player.LIGHT: TDAgent(player = Player.LIGHT, net = self, env = self.env),
-										 	    Player.DARK: RandomAgent(player = Player.DARK)})
+				eval_wins = self.evaluate(self.env, [TDAgent(player = 0, net = self, env = self.env),
+										 	    	 RandomAgent(player = 1)])
 				print("Eval, Episode: %s, Wins: %s" % (episode, str(eval_wins)))
 			if episode % self.save_interval == 0:
 				torch.save(self.state_dict(), os.path.join(self.save_location, 'checkpoint_%s.pt' % episode))
@@ -88,7 +88,7 @@ class BackgammonModel(nn.Module):
 		print("Average Turns: ", tot_turns // num_episodes)
 
 	def evaluate(self, env, agents, num_episodes = 100):
-		wins = {Player.LIGHT: 0, Player.DARK: 0, Player.EMPTY: 0}
+		wins = {0: 0, 1: 0, Player.EMPTY: 0}
 		cur_player = None
 
 		for episode in tqdm(range(0, num_episodes)):
@@ -99,7 +99,6 @@ class BackgammonModel(nn.Module):
 				legal_actions = env.get_legal_actions()
 				a = agent.choose_best_action(legal_actions)
 				cur_player, winner, obs, reward, done = env.step(a)
-							
 			wins[winner] += 1
 		return wins
 
@@ -135,10 +134,10 @@ class BackgammonModel(nn.Module):
 			self.load_state_dict(torch.load(self.saved_model))
 			print("loading saved model: %s" % self.saved_model)
 		env = Env(verbose=True, max_turns = 100000)
-		agents = {	
-			Player.LIGHT: HumanAgent(Player.LIGHT, env = env),
-			Player.DARK:  TDAgent(Player.DARK, net = self, env = env)
-			}
+		agents = [	
+			HumanAgent(player = 0, env = env),
+			TDAgent(player = 1, net = self, env = env)
+			]
 		cur_player, obs, reward, done = env.reset()
 	
 		while not done:
