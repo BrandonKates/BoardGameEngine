@@ -1,5 +1,5 @@
 import random
-
+from copy import deepcopy
 from enum import Enum
 from typing import NamedTuple
 
@@ -63,9 +63,20 @@ class Turn(NamedTuple):
 	first_move_hit: bool
 	second_move_hit: bool
 
+class State:
+	def __init__(self, board, bar, beared, turn_num, turn_history, double_turn, dice, cur_player):
+		self.board = deepcopy(board)
+		self.bar = bar.copy()
+		self.beared = beared.copy()
+		self.turn_num = turn_num
+		self.turn_history = turn_history.copy()
+		self.double_turn = double_turn
+		self.dice = dice
+		self.cur_player = cur_player
+
 
 class Backgammon:
-	def __init__(self, verbose=True, max_turns = 500):
+	def __init__(self, verbose=True, max_turns = 500, deterministic = None):
 		self.verbose = verbose
 		'''self.board = [
 			BoardSquare(Player.LIGHT, 2), BoardSquare(Player.EMPTY, 0), BoardSquare(Player.EMPTY, 0), BoardSquare(
@@ -82,18 +93,25 @@ class Backgammon:
 		 0,0,0,0,0,5,
 		 0,0,0,0,3,0,
 		 5,0,0,0,0,0],
-	    [0,0,0,0,0,5,
+		[0,0,0,0,0,5,
 		 0,3,0,0,0,0,
 		 5,0,0,0,0,0,
 		 0,0,0,0,0,2]]
 		self.bar = [0, 0]
+		self.beared = [0,0]
+		self.turn_num = 1
+		self.turn_history = []
+		self.double_turn = False
+		# self.dice
+		# self.cur_player
+
 		self.bar_pos = 100
 		self.pass_pos = 1001
 		self.off_pos = -100
 		self.checkers_per_side = 15
 		self.board_size = len(self.board[0])
 		# pieces that have moved off the board
-		self.beared_pieces = [0,0]
+
 		self.direction = [1,-1]
 		self.opponent = [1,0]
 		self.die_unicode = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅']
@@ -101,11 +119,28 @@ class Backgammon:
 		self.light_home = [18, 19, 20, 21, 22, 23]
 		self.moves = []
 		self.moves_list = []
-		self.turn_num = 1
+		
 		self.max_turns = max_turns
-		self.turn_history = []
-		self.double_turn = False
-		self.init_game()
+		self.ddice = None
+		if deterministic:
+			player, self.ddice = deterministic
+			self.dice = self.ddice[0]
+			self.cur_player = self.prev_player = player
+		else:
+			self.init_game()
+
+	def save_state(self):
+		return State(self.board, self.bar, self.beared, self.turn_num, self.turn_history, self.double_turn, self.dice, self.cur_player)
+
+	def restore_state(self, state):
+		self.board = deepcopy(state.board)
+		self.bar = state.bar.copy()
+		self.beared = state.beared.copy()
+		self.turn_num = state.turn_num
+		self.turn_history = state.turn_history.copy()
+		self.double_turn = state.double_turn
+		self.dice = state.dice
+		self.cur_player = state.cur_player
 
 	def init_game(self):
 		self.set_start_player()
@@ -115,8 +150,8 @@ class Backgammon:
 		s = "Turn %s\n" % str(self.turn_num)
 		bar_light = str(self.bar[0])
 		bar_dark = str(self.bar[1])
-		beared_light = str(self.beared_pieces[0])
-		beared_dark = str(self.beared_pieces[1])
+		beared_light = str(self.beared[0])
+		beared_dark = str(self.beared[1])
 
 		change = False
 		if len(bar_light) < len(beared_light):
@@ -275,6 +310,9 @@ class Backgammon:
 
 	def bar_start_ind(self, player):
 		return [-1, self.board_size][player]
+
+	def get_turn_num(self):
+		return self.turn_num
 
 	def get_pos(self, pos, roll, player):  # roll is a single value here
 		if pos == self.bar_pos or pos == 'bar':
@@ -441,7 +479,7 @@ class Backgammon:
 		self.board[player][pos] = amnt
 
 	# Update Board to reflect the move, i.e. move out of bar, or bear, or move one spot to another, captures, etc...
-	# update self.bar, self.cur_player, self.beared_pieces
+	# update self.bar, self.cur_player, self.beared
 
 	def apply_move(self, move) -> None:
 		start_pos = move.pos
@@ -458,7 +496,7 @@ class Backgammon:
 			self.update_board_pos(start_pos, cur_player, self.at(cur_player, start_pos) - 1)
 		if not self.in_board(end_pos):  # bear move
 			assert end_pos != self.bar_pos
-			self.beared_pieces[cur_player] += 1
+			self.beared[cur_player] += 1
 		elif move.hit:
 			# not bear move
 			# update the end position to have 1 piece of this type
@@ -485,8 +523,8 @@ class Backgammon:
 			assert self.at(cur_player, start_pos) >= 0
 			self.update_board_pos(start_pos, cur_player, self.at(cur_player, start_pos) + 1)
 		if not self.in_board(end_pos):
-			assert self.beared_pieces[cur_player] >= 1
-			self.beared_pieces[cur_player] -= 1
+			assert self.beared[cur_player] >= 1
+			self.beared[cur_player] -= 1
 		elif move.hit:
 			# not bear move
 			assert self.at(cur_player, end_pos) == 1
@@ -571,7 +609,7 @@ class Backgammon:
 	def able_to_bear(self, player):
 		if self.num_in_bar(player) > 0:
 			return False
-		total_pieces = self.beared_pieces[player]
+		total_pieces = self.beared[player]
 		for pos in self.player_home(player):
 			num = self.at(player, pos)
 			total_pieces += num
@@ -665,9 +703,9 @@ class Backgammon:
 		return self.moves_list[i]
 
 	def game_over(self):
-		if self.beared_pieces[0] == 15:
+		if self.beared[0] == 15:
 			return True, 0
-		elif self.beared_pieces[1] == 15:
+		elif self.beared[1] == 15:
 			return True, 1
 		elif self.turn_num >= self.max_turns:
 			return True, Player.EMPTY
@@ -692,8 +730,11 @@ class Backgammon:
 		if self.double_turn or not double_move:
 			self.prev_player = self.cur_player
 			self.cur_player = self.opponent[self.cur_player]
+			if self.ddice:
+				self.dice = self.ddice[self.turn_num]
+			else:
+				self.roll_dice()
 			self.turn_num += 1
-			self.roll_dice()
 
 		self.double_turn = double_move and not self.double_turn
 
@@ -743,7 +784,7 @@ class Backgammon:
 				print(BAN_move)
 				print(self)
 
-		score = self.beared_pieces[winner], self.beared_pieces[self.opponent[winner]]
+		score = self.beared[winner], self.beared[self.opponent[winner]]
 
 		if self.verbose:
 			print("The winner is %s!" % winner, score)
@@ -782,11 +823,11 @@ class Backgammon:
 				tensor.append((num-3) if (num > 3) else 0)
 
 		tensor.append(self.bar[player])
-		tensor.append(self.beared_pieces[player])
+		tensor.append(self.beared[player])
 		tensor.append(int(self.cur_player == player))
 
 		tensor.append(self.bar[opponent])
-		tensor.append(self.beared_pieces[opponent])
+		tensor.append(self.beared[opponent])
 		tensor.append(int(self.cur_player == opponent))
 
 		return tensor

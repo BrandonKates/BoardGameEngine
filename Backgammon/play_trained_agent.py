@@ -4,7 +4,7 @@ from BackgammonModel import BackgammonModel
 
 model = BackgammonModel( \
     input_size = 198,
-    hidden_size = sys.argv[2],
+    hidden_size = int(sys.argv[2]),
     output_size = 1,
     trace_decay = 0,
     alpha = 0.1,

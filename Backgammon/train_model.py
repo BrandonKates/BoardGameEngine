@@ -18,7 +18,7 @@ if __name__ == "__main__":
 		input_size = 198,
 		hidden_size = args.hidden,
 		output_size = 1,
-		trace_decay = 0.7,
+		trace_decay = 0,
 		alpha = 0.1,
 		save_interval = 1000,
 		saved_model = args.load_model,
