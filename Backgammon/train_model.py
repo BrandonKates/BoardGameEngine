@@ -6,7 +6,7 @@ from BackgammonModel import BackgammonModel
 
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser(
-		description='Train a DQN Model on PongNoFrameskip-v4')
+		description='Train TD-Gammon Model')
 
 	parser.add_argument('--start_episode', '-s', type=int, default=1)
 	parser.add_argument('--episodes', '-e', type=int, default=100000)
@@ -18,7 +18,7 @@ if __name__ == "__main__":
 		input_size = 198,
 		hidden_size = args.hidden,
 		output_size = 1,
-		trace_decay = 0.7,
+		trace_decay = 0,
 		alpha = 0.1,
 		save_interval = 1000,
 		saved_model = args.load_model,

@@ -1,0 +1,9 @@
+Loading saved model: ./checkpoints/200/checkpoint_56000.pt
+Eval, Episode: 57000, Wins: {0: 50, 1: 50, <Player.EMPTY: 2>: 0}
+Eval, Episode: 58000, Wins: {0: 52, 1: 48, <Player.EMPTY: 2>: 0}
+Eval, Episode: 59000, Wins: {0: 51, 1: 49, <Player.EMPTY: 2>: 0}
+Eval, Episode: 60000, Wins: {0: 54, 1: 46, <Player.EMPTY: 2>: 0}
+Eval, Episode: 61000, Wins: {0: 46, 1: 54, <Player.EMPTY: 2>: 0}
+Eval, Episode: 62000, Wins: {0: 50, 1: 50, <Player.EMPTY: 2>: 0}
+Eval, Episode: 63000, Wins: {0: 38, 1: 62, <Player.EMPTY: 2>: 0}
+Eval, Episode: 64000, Wins: {0: 56, 1: 44, <Player.EMPTY: 2>: 0}

@@ -1,5 +1,5 @@
 import random
-
+from copy import deepcopy
 from enum import Enum
 from typing import NamedTuple
 
@@ -63,10 +63,22 @@ class Turn(NamedTuple):
 	first_move_hit: bool
 	second_move_hit: bool
 
+class State:
+	def __init__(self, board, bar, beared, turn_num, turn_history, double_turn, dice, cur_player):
+		self.board = deepcopy(board)
+		self.bar = bar.copy()
+		self.beared = beared.copy()
+		self.turn_num = turn_num
+		self.turn_history = turn_history.copy()
+		self.double_turn = double_turn
+		self.dice = dice
+		self.cur_player = cur_player
+
+
 class Backgammon:
-	def __init__(self, verbose=True, max_turns = 500):
+	def __init__(self, verbose=True, max_turns = 500, deterministic = None):
 		self.verbose = verbose
-		self.board = [
+		'''self.board = [
 			BoardSquare(Player.LIGHT, 2), BoardSquare(Player.EMPTY, 0), BoardSquare(Player.EMPTY, 0), BoardSquare(
 				Player.EMPTY, 0), BoardSquare(Player.EMPTY, 0), BoardSquare(Player.DARK,  5),
 			BoardSquare(Player.EMPTY, 0), BoardSquare(Player.DARK,  3), BoardSquare(Player.EMPTY, 0), BoardSquare(
@@ -75,33 +87,60 @@ class Backgammon:
 				Player.EMPTY, 0), BoardSquare(Player.LIGHT, 3), BoardSquare(Player.EMPTY, 0),
 			BoardSquare(Player.LIGHT, 5), BoardSquare(Player.EMPTY, 0), BoardSquare(Player.EMPTY, 0), BoardSquare(
 				Player.EMPTY, 0), BoardSquare(Player.EMPTY, 0), BoardSquare(Player.DARK,  2)
-		]
-		'''self.board = {Player.LIGHT:[2,0,0,0,0,0,
-									0,0,0,0,0,5,
-									0,0,0,0,3,0,
-									5,0,0,0,0,0],
-					  Player.DARK: [0,0,0,0,0,5,
-					  				0,3,0,0,0,0,
-					  				5,0,0,0,0,0,
-					  				0,0,0,0,0,2]}'''
-		self.bar = {Player.LIGHT: 0, Player.DARK: 0}
+		]'''
+		self.board = [ 
+		[2,0,0,0,0,0,
+		 0,0,0,0,0,5,
+		 0,0,0,0,3,0,
+		 5,0,0,0,0,0],
+		[0,0,0,0,0,5,
+		 0,3,0,0,0,0,
+		 5,0,0,0,0,0,
+		 0,0,0,0,0,2]]
+		self.bar = [0, 0]
+		self.beared = [0,0]
+		self.turn_num = 1
+		self.turn_history = []
+		self.double_turn = False
+		# self.dice
+		# self.cur_player
+
 		self.bar_pos = 100
 		self.pass_pos = 1001
 		self.off_pos = -100
 		self.checkers_per_side = 15
-		self.board_size = len(self.board)
+		self.board_size = len(self.board[0])
 		# pieces that have moved off the board
-		self.beared_pieces = {Player.LIGHT: 0, Player.DARK: 0}
+
+		self.direction = [1,-1]
+		self.opponent = [1,0]
 		self.die_unicode = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅']
 		self.dark_home = [5, 4, 3, 2, 1, 0]
 		self.light_home = [18, 19, 20, 21, 22, 23]
 		self.moves = []
 		self.moves_list = []
-		self.turn_num = 1
+		
 		self.max_turns = max_turns
-		self.turn_history = []
-		self.double_turn = False
-		self.init_game()
+		self.ddice = None
+		if deterministic:
+			player, self.ddice = deterministic
+			self.dice = self.ddice[0]
+			self.cur_player = self.prev_player = player
+		else:
+			self.init_game()
+
+	def save_state(self):
+		return State(self.board, self.bar, self.beared, self.turn_num, self.turn_history, self.double_turn, self.dice, self.cur_player)
+
+	def restore_state(self, state):
+		self.board = deepcopy(state.board)
+		self.bar = state.bar.copy()
+		self.beared = state.beared.copy()
+		self.turn_num = state.turn_num
+		self.turn_history = state.turn_history.copy()
+		self.double_turn = state.double_turn
+		self.dice = state.dice
+		self.cur_player = state.cur_player
 
 	def init_game(self):
 		self.set_start_player()
@@ -109,10 +148,10 @@ class Backgammon:
 
 	def __str__(self):
 		s = "Turn %s\n" % str(self.turn_num)
-		bar_light = str(self.bar[Player.LIGHT])
-		bar_dark = str(self.bar[Player.DARK])
-		beared_light = str(self.beared_pieces[Player.LIGHT])
-		beared_dark = str(self.beared_pieces[Player.DARK])
+		bar_light = str(self.bar[0])
+		bar_dark = str(self.bar[1])
+		beared_light = str(self.beared[0])
+		beared_dark = str(self.beared[1])
 
 		change = False
 		if len(bar_light) < len(beared_light):
@@ -133,13 +172,13 @@ class Backgammon:
 		s += 'Rolled: %s\n ' % str(self.dice_to_unicode(self.dice))
 		return s
 
-	def board_repr(self):
-		s = ''
-		offset = self.board_size // 2
-		for i in range(offset):
-			s += self.board[i].to_unicode() + '\t' + \
-				self.board[self.board_size-i-1].to_unicode() + '\n'
-		return self.to_unicode()
+	#def board_repr(self):
+	#	s = ''
+	#	offset = self.board_size // 2
+	#	for i in range(offset):
+	#		s += self.board[i].to_unicode() + '\t' + \
+	#			self.board[self.board_size-i-1].to_unicode() + '\n'
+	#	return self.to_unicode()
 
 	def to_unicode(self):
 		s =  '│13 14 15 16 17 18 19 20 21 22 23 24│\n'
@@ -168,16 +207,16 @@ class Backgammon:
 		matrix = [[Player.EMPTY] * 12 for i in range(10)]
 
 		for i in range(0, 12):
-			move = self.at(i)
-			if move.player != Player.EMPTY:
-				for k in range(min(move.num, 5)):
-					matrix[9-k][11-i] = move.player
+			player = self.player_at(i)
+			if player != Player.EMPTY:
+				for k in range(min(self.at(player.value, i), 5)):
+					matrix[9-k][11-i] = player
 
 		for i in range(12, self.board_size):
-			move = self.at(i)
-			if move.player != Player.EMPTY:
-				for k in range(min(move.num, 5)):
-					matrix[k][i-12] = move.player
+			player = self.player_at(i)
+			if player != Player.EMPTY:
+				for k in range(min(self.at(player.value, i), 5)):
+					matrix[k][i-12] = player
 		return matrix
 
 	def board_as_unicode_matrix(self):
@@ -207,37 +246,40 @@ class Backgammon:
 	def dice_to_unicode(self, dice):
 		return self.die_unicode[dice[0]-1] + " " + self.die_unicode[dice[1]-1]
 
-	def at(self, point):
-		return self.board[point]
+
+	def at(self, player, point):
+		#assert not (self.board[0][point] > 0 and self.board[1][point] > 0) 
+		return self.board[player][point]
 
 	def player_at(self, point) -> Player:
-		return self.at(point).player
-
-	def num_at(self, point):
-		return self.at(point).num
+		if self.board[0][point] > 0:
+			return Player.LIGHT
+		elif self.board[1][point] > 0:
+			return Player.DARK
+		return Player.EMPTY
 
 	def in_board(self, ind):
 		return 0 <= ind < self.board_size
 
 	def is_empty(self, point):
-		return self.player_at(point) == Player.EMPTY
+		return self.at(0, point) == 0 and self.at(1, point) == 0
 
 	def is_enemy(self, point, player):
-		return not self.is_empty(point) and self.player_at(point) != player
-
-	def is_legal_spot(self, point, player):
-		return point == self.bar_pos or self.is_empty(point) or self.player_at(point) == player or self.num_at(point) == 1
+		return self.at(self.opponent[player], point) > 0
 
 	def is_hit(self, point, player):
-		return self.in_board(point) and self.is_enemy(point, player) and self.num_at(point) == 1
+		return self.in_board(point) and self.at(self.opponent[player], point) == 1
+	
+	def is_legal_spot(self, point, player):
+		return point == self.bar_pos or self.at(self.opponent[player], point) <= 1
 
 	def is_score_spot(self, point, player):
 		# for white this is > 23, for black this is < 0
 		if point == self.bar_pos:
 			return False
-		if player == Player.LIGHT:
+		if player == 0:
 			return point > 23
-		if player == Player.DARK:
+		if player == 1:
 			return point < 0
 		return False
 
@@ -248,11 +290,11 @@ class Backgammon:
 			print("Player 1 (white) rolled: %s" % str(light))
 			print("Player 2 (black) rolled: %s" % str(dark))
 		if light > dark:
-			self.cur_player = self.prev_player = Player.LIGHT
+			self.cur_player = self.prev_player = 0
 			if self.verbose:
 				print("Player 1 (white) goes first.")
 		elif dark > light:
-			self.cur_player = self.prev_player = Player.DARK
+			self.cur_player = self.prev_player = 1
 			if self.verbose:
 				print("Player 2 (black) goes first.")
 		else:
@@ -261,25 +303,21 @@ class Backgammon:
 			self.set_start_player()
 
 	def num_in_bar(self, player):
-		assert(player != Player.EMPTY)
 		return self.bar[player]
 
 	def player_home(self, player):
-		if player == Player.LIGHT:
-			return self.light_home
-		if player == Player.DARK:
-			return self.dark_home
+		return [self.light_home, self.dark_home][player]
 
 	def bar_start_ind(self, player):
-		if player == Player.LIGHT:
-			return -1
-		elif player is Player.DARK:
-			return self.board_size
+		return [-1, self.board_size][player]
+
+	def get_turn_num(self):
+		return self.turn_num
 
 	def get_pos(self, pos, roll, player):  # roll is a single value here
 		if pos == self.bar_pos or pos == 'bar':
 			pos = self.bar_start_ind(player)
-		return pos + player.direction() * roll
+		return pos + self.direction[player] * roll
 
 	def get_next_pos(self, pos, player):
 		return self.get_pos(pos, 1, player)
@@ -291,10 +329,7 @@ class Backgammon:
 		return self.get_pos(move.pos, move.num, move.player)
 
 	def get_start_pos(self, player):
-		if player == Player.LIGHT:
-			return 0
-		elif player == Player.DARK:
-			return self.board_size - 1
+		return [0, self.board_size - 1][player]
 
 	def input_to_move(self, positions, player) -> list:
 		if positions == 'pass':
@@ -441,72 +476,66 @@ class Backgammon:
 
 	def update_board_pos(self, pos, player, amnt):
 		assert(amnt >= 0)
-		if amnt == 0:
-			player = Player.EMPTY
-		self.board[pos] = BoardSquare(player, amnt)
+		self.board[player][pos] = amnt
 
 	# Update Board to reflect the move, i.e. move out of bar, or bear, or move one spot to another, captures, etc...
-	# update self.bar, self.cur_player, self.beared_pieces
+	# update self.bar, self.cur_player, self.beared
 
 	def apply_move(self, move) -> None:
 		start_pos = move.pos
 		end_pos = self.get_pos_from_move(move)
 		cur_player = move.player
-		opp_player = cur_player.opponent()
+		opp_player = self.opponent[cur_player]
 		if start_pos == self.pass_pos:
 			return
 		if start_pos == self.bar_pos:
 			assert self.bar[cur_player] >= 1
 			self.bar[cur_player] -= 1
 		else:
-			assert self.player_at(start_pos) == cur_player
-			assert self.num_at(start_pos) >= 1
-			self.update_board_pos(start_pos, cur_player, self.num_at(start_pos) - 1)
+			assert self.at(cur_player, start_pos) >= 1
+			self.update_board_pos(start_pos, cur_player, self.at(cur_player, start_pos) - 1)
 		if not self.in_board(end_pos):  # bear move
 			assert end_pos != self.bar_pos
-			self.beared_pieces[cur_player] += 1
+			self.beared[cur_player] += 1
 		elif move.hit:
 			# not bear move
 			# update the end position to have 1 piece of this type
-			assert self.num_at(end_pos) == 1
-			assert self.player_at(end_pos) == opp_player
+			assert self.at(opp_player, end_pos) == 1
 			self.update_board_pos(end_pos, cur_player, 1)
+			self.update_board_pos(end_pos, opp_player, 0)
 			self.bar[opp_player] += 1
 		else:
-			assert self.num_at(end_pos) >= 0
-			assert self.is_empty(end_pos) or self.player_at(end_pos) == cur_player
-			self.update_board_pos(end_pos, cur_player, self.num_at(end_pos) + 1)
-			assert self.num_at(end_pos) >= 1
-			assert self.player_at(end_pos) == cur_player
+			assert self.at(opp_player, end_pos) == 0
+			assert self.at(cur_player, end_pos) >= 0
+			self.update_board_pos(end_pos, cur_player, self.at(cur_player, end_pos) + 1)
+			assert self.at(cur_player, end_pos) >= 1
 
 	def undo_move(self, move):
 		start_pos = move.pos
 		end_pos = self.get_pos_from_move(move)
 		cur_player = move.player
-		opp_player = cur_player.opponent()
+		opp_player = self.opponent[cur_player]
 		if start_pos == self.pass_pos:
 			return
 		elif start_pos == self.bar_pos:
 			self.bar[cur_player] += 1
 		else:
-			assert self.num_at(start_pos) >= 0
-			assert self.player_at(start_pos) != opp_player
-			self.update_board_pos(start_pos, cur_player, self.at(start_pos).num + 1)
+			assert self.at(cur_player, start_pos) >= 0
+			self.update_board_pos(start_pos, cur_player, self.at(cur_player, start_pos) + 1)
 		if not self.in_board(end_pos):
-			assert self.beared_pieces[cur_player] >= 1
-			self.beared_pieces[cur_player] -= 1
+			assert self.beared[cur_player] >= 1
+			self.beared[cur_player] -= 1
 		elif move.hit:
 			# not bear move
-			assert self.num_at(end_pos) == 1
-			assert self.player_at(end_pos) == cur_player
+			assert self.at(cur_player, end_pos) == 1
 			assert self.bar[opp_player] >= 1
 			self.update_board_pos(end_pos, opp_player, 1)
+			self.update_board_pos(end_pos, cur_player, 0)
 			self.bar[opp_player] -= 1
 		else:
-			assert self.player_at(end_pos) == cur_player
-			assert self.num_at(end_pos) >= 1
-			self.update_board_pos(end_pos, cur_player, self.at(end_pos).num - 1)
-			assert self.player_at(end_pos) == Player.EMPTY or self.player_at(end_pos) == cur_player
+			assert self.at(cur_player, end_pos) >= 1
+			self.update_board_pos(end_pos, cur_player, self.at(cur_player, end_pos) - 1)
+			assert self.at(cur_player, end_pos) >= 0 
 
 	def check_move_hit(self, move):
 		hit = False
@@ -580,18 +609,17 @@ class Backgammon:
 	def able_to_bear(self, player):
 		if self.num_in_bar(player) > 0:
 			return False
-		total_pieces = self.beared_pieces[player]
+		total_pieces = self.beared[player]
 		for pos in self.player_home(player):
-			sq = self.at(pos)
-			if sq.player == player:
-				total_pieces += sq.num
+			num = self.at(player, pos)
+			total_pieces += num
 		assert total_pieces <= self.checkers_per_side
 		return total_pieces == self.checkers_per_side
 
 	def furthest_checker_in_home(self, player):
 		home = self.player_home(player)
 		for point in home:
-			if self.player_at(point) == player:
+			if self.at(player, point) > 0:
 				return point
 
 	def get_legal_actions(self, player=None, dice=None):
@@ -652,15 +680,14 @@ class Backgammon:
 
 		able_to_bear = self.able_to_bear(player)
 		pos = self.player_home(player)[0] if able_to_bear else self.get_start_pos(player)
-
-		for pos in range(self.board_size):
-		#while self.in_board(pos):
-			if self.player_at(pos) == player:
+		direction = self.direction[player]
+		while self.in_board(pos):
+			if self.at(player, pos) > 0:
 				for roll in dice:
 					next_pos = self.get_pos(pos, roll, player)
 					if self.is_score_spot(next_pos, player) and able_to_bear:
-						if player == Player.LIGHT and next_pos == 24 or \
-						   player == Player.DARK and next_pos == -1:
+						if player == 0 and next_pos == 24 or \
+						   player == 1 and next_pos == -1:
 							moves.append(Move(player, pos, roll, False))
 						else:
 							if pos == self.furthest_checker_in_home(player):
@@ -668,7 +695,7 @@ class Backgammon:
 					elif not self.is_score_spot(next_pos, player) and self.in_board(next_pos) and self.is_legal_spot(next_pos, player):
 						hit = self.is_hit(next_pos, player)
 						moves.append(Move(player, pos, roll, hit))
-			#pos = self.get_next_pos(pos, player)
+			pos += direction
 		return moves
 
 	def random_policy(self):
@@ -676,10 +703,10 @@ class Backgammon:
 		return self.moves_list[i]
 
 	def game_over(self):
-		if self.beared_pieces[Player.LIGHT] == 15:
-			return True, Player.LIGHT
-		elif self.beared_pieces[Player.DARK] == 15:
-			return True, Player.DARK
+		if self.beared[0] == 15:
+			return True, 0
+		elif self.beared[1] == 15:
+			return True, 1
 		elif self.turn_num >= self.max_turns:
 			return True, Player.EMPTY
 		else:
@@ -693,19 +720,21 @@ class Backgammon:
 			done = True
 			if player == winner:
 				reward = 1
-			elif player.opponent() == winner or self.turn_num >= self.max_turns:
+			elif self.opponent[player] == winner or self.turn_num >= self.max_turns:
 				reward = 0
 		return reward, done, winner
 
 	def step(self, action):
-		#print(self.encoded_move_to_BAN(action, self.cur_player, self.dice))
 		self.apply_action(action)
 		double_move = self.dice[0] == self.dice[1]
 		if self.double_turn or not double_move:
 			self.prev_player = self.cur_player
-			self.cur_player = self.cur_player.opponent()
+			self.cur_player = self.opponent[self.cur_player]
+			if self.ddice:
+				self.dice = self.ddice[self.turn_num]
+			else:
+				self.roll_dice()
 			self.turn_num += 1
-			self.roll_dice()
 
 		self.double_turn = double_move and not self.double_turn
 
@@ -738,7 +767,7 @@ class Backgammon:
 			moves.extend(double_moves)
 
 		self.turn_num += 1
-		self.cur_player = self.cur_player.opponent()
+		self.cur_player = self.opponent[self.cur_player]
 		return self.dice, moves
 
 	def play_game(self):
@@ -755,7 +784,7 @@ class Backgammon:
 				print(BAN_move)
 				print(self)
 
-		score = self.beared_pieces[winner], self.beared_pieces[winner.opponent()]
+		score = self.beared[winner], self.beared[self.opponent[winner]]
 
 		if self.verbose:
 			print("The winner is %s!" % winner, score)
@@ -771,33 +800,34 @@ class Backgammon:
 
 	def observation_tensor(self, player):
 		tensor = []
-		opponent = player.opponent()
+		opponent = self.opponent[player]
 
-		for sq in self.board:
-			num = sq.num
-			if sq.player == player:
+		for pos in range(self.board_size):
+			num = self.at(player, pos)
+			if num == 0:
+				tensor.extend([0,0,0,0])
+			else:
 				tensor.append(int(num == 1))
 				tensor.append(int(num == 2))
 				tensor.append(int(num == 3))
 				tensor.append((num-3) if (num > 3) else 0)
+		
+		for pos in range(self.board_size):
+			num = self.at(opponent, pos)
+			if num == 0:
+				tensor.extend([0,0,0,0])
 			else:
-				tensor.extend([0, 0, 0, 0])
-		for sq in self.board:
-			num = sq.num
-			if sq.player == opponent:
 				tensor.append(int(num == 1))
 				tensor.append(int(num == 2))
 				tensor.append(int(num == 3))
 				tensor.append((num-3) if (num > 3) else 0)
-			else:
-				tensor.extend([0, 0, 0, 0])
 
 		tensor.append(self.bar[player])
-		tensor.append(self.beared_pieces[player])
+		tensor.append(self.beared[player])
 		tensor.append(int(self.cur_player == player))
 
 		tensor.append(self.bar[opponent])
-		tensor.append(self.beared_pieces[opponent])
+		tensor.append(self.beared[opponent])
 		tensor.append(int(self.cur_player == opponent))
 
 		return tensor
