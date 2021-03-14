@@ -1,17 +1,6 @@
 from enum import Enum
 from typing import NamedTuple, Tuple, List
 
-class Moves(Enum):
-	UP = (1, 0)
-	DOWN = (-1, 0)
-	LEFT = (0, 1)
-	RIGHT = (0, -1)
-	UP_LEFT = (1, 1)
-	UP_RIGHT = (1, -1)
-	DOWN_LEFT = (-1, 1)
-	DOWN_RIGHT = (-1, -1)
-
-
 class Color(Enum):
 	WHITE = 0
 	BLACK = 1
@@ -47,8 +36,8 @@ class Othello:
 			self.board.set_square(flip, self.curr_color)
 
 		num_flips = len(flips)
-		self.total_pieces[self.curr_color.value + num_flips + 1] # + 1 for {spot}
-		self.total_pieces[self.opp_color.value - num_flips]
+		self.total_pieces[self.curr_color.value] += num_flips + 1 # + 1 for {spot}
+		self.total_pieces[self.opp_color.value]  -= num_flips
 
 		# Swap current and opposite player
 		self.curr_color, self.opp_color = self.opp_color, self.curr_color
@@ -92,7 +81,7 @@ class Othello:
 			return []
 
 		flips = []
-		for move in Moves:
+		for move in Board.get_move_directions():
 			flips.extend(self.get_flips_in_direction(spot, move))
 		return flips
 
@@ -138,8 +127,11 @@ class Board:
 		return 0 <= x < self.rows and 0 <= y < self.cols
 
 	def move(spot, move):
-		return spot[0] + move.value[0], spot[1] + move.value[1]
+		return spot[0] + move[0], spot[1] + move[1]
 
+	def get_move_directions():
+		# UP, DOWN, LEFT, RIGHT, UP_LEFT, UP_RIGHT, DOWN_LEFT, DOWN_RIGHT
+		return [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)]
 
 	def get_square(self, x: int, y: int) -> Color:
 		assert self.is_spot_in_board(x, y)
