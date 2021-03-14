@@ -138,7 +138,7 @@ class Board:
 		return self.board[x * self.rows + y]
 
 	def set_square(self, x: int, y: int, color: Color) -> None:
-		self.board[x][y] = color
+		self.board[x * self.rows + y] = color
 
 	def flip_square(self, spot: Tuple[int, int])-> None:
 		current_color = Board.get_square(*spot)
