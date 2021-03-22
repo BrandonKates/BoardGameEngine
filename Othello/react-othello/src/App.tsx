@@ -1,14 +1,14 @@
 import React from 'react';
-import logo from './logo.svg';
 import './App.scss';
 
-import Game from './components/Game/Game';
+import ClientComponent from './components/ClientComponent/ClientComponent';
 
 function App() {
   return (
     <div className="App">
       <header className="App-header">
-        <Game/>
+        {/* SOCKET IO CLIENT*/}
+        <ClientComponent />
       </header>
     </div>
   );
