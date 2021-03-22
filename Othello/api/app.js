@@ -14,70 +14,58 @@ const index = require("./routes/index");
 
 app.use(index);
 
-let interval;
+
+let players;
+var joined = true;
+
+var games = Array(100);
+for (let i = 0; i < 100; i++){
+  games[i] = {players: 0, pid: [0, 0]}
+}
+
 
 io.on("connection", (socket) => {
   console.log("New client connected");
-  if (interval) {
-    clearInterval(interval);
-  }
-  interval = setInterval(() => getApiAndEmit(socket), 1000);
+  var color;
+  var playerId = Math.floor((Math.random() * 100) + 1);
+
+  console.log(playerId + ' connected!');
+
+  socket.on('joined', function(roomId) {
+    if(games[roomId].players < 2){
+      games[roomId].players++;
+      games[roomId].pid[games[roomId].players - 1] = playerId;
+    }
+    else{
+      socket.emit('full', roomId);
+      return;
+    }
+
+    console.log(games[roomId]);
+    players = games[roomId].players;
+
+    color = players % 2 == 0 ? "⚪" : "⚫";
+
+    socket.emit('player', { playerId, players, color, roomId });
+  });
+
+  socket.on('move', msg => {
+    socket.broadcast.emit('move', msg);
+    console.log(msg);
+  });
+
+  socket.on('play', msg => {
+    socket.broadcast.emit('play', msg);
+    console.log("ready " + msg);
+  });
+
   socket.on("disconnect", () => {
-    console.log("Client disconnected");
-    clearInterval(interval);
+      for (let i = 0; i < 100; i++) {
+          if (games[i].pid[0] == playerId || games[i].pid[1] == playerId)
+              games[i].players--;
+      }
+      console.log(playerId + ' disconnected');
   });
 });
-
-const getApiAndEmit = socket => {
-  const response = new Date();
-  // Emitting a new message. Will be consumed by the client
-  socket.emit("FromAPI", response);
-};
 
 server.listen(port, () => console.log(`Listening on port ${port}`));
-
-
-let players = [];
-let current_turn = 0;
-let timeOut;
-let _turn = 0;
-const MAX_WAITING = 5000;
-
-function next_turn(){
-    _turn = current_turn++ % players.length;
-    players[_turn].emit('your_turn');
-    console.log("next turn triggered " , _turn);
-    triggerTimeout();
-}
-
-function triggerTimeout(){
-   timeOut = setTimeout(()=>{
-     next_turn();
-   },MAX_WAITING);
-}
-
-function resetTimeOut(){
-    if(typeof timeOut === 'object'){
-      console.log("timeout reset");
-      clearTimeout(timeOut);
-    }
-}
-
-io.on('connection', function(socket){
-  console.log('A player connected');
-
-  players.push(socket);
-  socket.on('pass_turn',function(){
-     if(players[_turn] == socket){
-        resetTimeOut();
-        next_turn();
-     }
-  });
-
-    socket.on('disconnect', function(){
-        console.log('A player disconnected');
-        players.splice(players.indexOf(socket),1);
-        _turn--;
-        console.log("A number of players now ",players.length);
-    });
-});

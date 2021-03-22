@@ -7,6 +7,9 @@ import * as _ from 'underscore'
 interface Props {
     makeMove(move: Move): void
     receiveMove: Move
+    startGame: boolean
+    color: string
+    gameStatus: string
 }
 
 interface State {
@@ -37,7 +40,7 @@ class Game extends React.Component<Props, State> {
             xIsNext: true,
             legalMoves: {},
             passTurn: false,
-            color: "⚪"
+            color: props.color
         };
         this.makeMove = this.makeMove.bind(this);
         this.receiveMove = this.receiveMove.bind(this);
@@ -74,9 +77,9 @@ class Game extends React.Component<Props, State> {
         const current = this.getBoard();
         const currColor = this.getCurrentPlayer();
         const nextColor = this.state.xIsNext ? "⚫" : "⚪";
-        var legalMoves = Object.keys(getLegalMoves(currColor, current)).length;
-        var nextLegalMoves = Object.keys(getLegalMoves(nextColor, current)).length;
-        return legalMoves === 0 && nextLegalMoves;
+        var legalMoves = Object.keys(getLegalMoves(currColor, current));
+        var nextLegalMoves = Object.keys(getLegalMoves(nextColor, current));
+        return legalMoves.length === 0 && nextLegalMoves.length === 0;
 
     }
 
@@ -114,7 +117,11 @@ class Game extends React.Component<Props, State> {
         const currColor = this.getCurrentPlayer();
         
         const legalMoves = getLegalMoves(currColor, squares);
-        if (this.isGameOver() || squares[i] || !legalMoves.hasOwnProperty(i) || this.state.color !== currColor) {
+        if (!this.props.startGame ||
+            this.isGameOver() ||
+            squares[i] ||
+            !legalMoves.hasOwnProperty(i) ||
+            this.state.color !== currColor) {
             return;
         }
 
@@ -142,7 +149,7 @@ class Game extends React.Component<Props, State> {
         const history = this.state.history;
         const current = history[this.state.stepNumber];
 
-        const moves = history.map((step, move) => {
+        /*const moves = history.map((step, move) => {
             const desc = move ?
                 'Move #' + move :
                 'Start';
@@ -151,7 +158,7 @@ class Game extends React.Component<Props, State> {
                     <button onClick={() => this.jumpTo(move)}>{desc}</button>
                 </li>
             );
-        });
+        });*/
 
         this.receiveMove();
 
@@ -164,16 +171,18 @@ class Game extends React.Component<Props, State> {
         }
 
         return (
-            <div className="game">
-                <div className="game-board">
-                    <Board
-                        squares={current.squares}
-                        onClick={(i: any) => this.handleClick(i)}
-                    />
-                </div>
-                <div className="game-info">
-                    <div>{status}</div>
-                    <ol>{moves}</ol>
+            <div>{this.props.gameStatus}
+                <div className="game">
+                    <div className="game-board">
+                        <Board
+                            squares={current.squares}
+                            onClick={(i: any) => this.handleClick(i)}
+                        />
+                    </div>
+                    <div className="game-info">
+                        <div>{status}</div>
+                        {/*<ol>{moves}</ol>*/}
+                    </div>
                 </div>
             </div>
         );

@@ -18,16 +18,12 @@ const makeMove = (move: Move) => {
   return
 }
 
-socket.on('move', (msg: any) => {
-  return msg;
-});
-
-const receiveMove = (msg: any) => {
-  return msg;
-}
 
 export default function ClientComponent() {
   const [oppMove, setOppMove] = useState({i: -100, color: 'none', flips: []});
+  const [gameStatus, setGameStatus] = useState('Waiting for second player');
+  const [startGame, setStartGame] = useState(false);
+  const [color, setColor] = useState("⚪");
 
   useEffect(() => {
     socket.on('move', move => {
@@ -37,10 +33,26 @@ export default function ClientComponent() {
 
   }, []);
 
+  useEffect(() => {
+    socket.on('player', msg => {
+      setColor(msg.color);
+      const players = msg.players; // number of players
+
+      if(players === 2){
+        setStartGame(true);
+        socket.emit('play', msg.roomId);
+        setGameStatus('Game in Progress');
+      }
+      else {
+        setGameStatus('Waiting for Second Player');
+      }
+    });
+  });
+
 
   return (
     <div>
-      <Game makeMove={(i) => makeMove(i)} receiveMove={oppMove}/>
+      <Game makeMove={(i) => makeMove(i)} receiveMove={oppMove} startGame={startGame} color={color} gameStatus={gameStatus}/>
     </div>
   );
 }
