@@ -33,7 +33,7 @@ class TestBoard:
 
 	def test_board_setup(self):
 		board, _ = self.setup_board()
-		assert board.get_square(3, 3) == Color.BLACK
-		assert board.get_square(3, 4) == Color.WHITE
-		assert board.get_square(4, 3) == Color.WHITE
-		assert board.get_square(4, 4) == Color.BLACK
+		assert board.get_square(3, 4) == Color.BLACK
+		assert board.get_square(3, 3) == Color.WHITE
+		assert board.get_square(4, 4) == Color.WHITE
+		assert board.get_square(4, 3) == Color.BLACK
