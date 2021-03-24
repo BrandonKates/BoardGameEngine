@@ -6,10 +6,10 @@ import * as _ from 'underscore'
 
 interface Props {
     makeMove(move: Move): void
-    receiveMove: Move
     startGame: boolean
     color: string
     gameStatus: string
+    socket: any
 }
 
 interface State {
@@ -46,15 +46,25 @@ class Game extends React.Component<Props, State> {
         this.receiveMove = this.receiveMove.bind(this);
     }
 
+    componentDidMount(){
+        this.props.socket.on('move', (move: Move) => {
+            this.receiveMove(move);
+        });
+    }
+    componentWillUnmount(){
+        this.props.socket.off('move');
+    }
+
+
     makeMove(move: Move){
         return this.props.makeMove(move);
     }
 
-    receiveMove(){
-        const move = this.props.receiveMove;
+    receiveMove(move: Move){
         const passTurn = move.i === -1;
-        // Do not propagate move if it is not in board, or the spot already has a piece on it
-        if(!isSpotInBoard(move.i) || !passTurn || !this.isSpotEmpty(move.i)){
+        console.log("Received Move from Opponent: ", move);
+        // Do not move if spot is invalid
+        if(!(isSpotInBoard(move.i) || passTurn) || !this.isSpotEmpty(move.i)){
             return
         }
         console.log("Opponent made move: ", move);
@@ -92,11 +102,11 @@ class Game extends React.Component<Props, State> {
 
     move(move: Move) {
         const history = this.state.history.slice(0, this.state.stepNumber + 1);
-
-
         var squares = this.getBoard();
-        _.forEach(move.flips, flip => flipSquare(flip, squares));
-        squares[move.i] = move.color;
+        if(move.i !== -1){
+            _.forEach(move.flips, flip => flipSquare(flip, squares));
+            squares[move.i] = move.color;
+        }
         
         this.setState({
             history: history.concat([
@@ -111,17 +121,25 @@ class Game extends React.Component<Props, State> {
         return squares;
     }
 
-    handleClick(i: number) {
-        var squares = this.getBoard().slice();
-        
+    randomTurn(){
         const currColor = this.getCurrentPlayer();
-        
+        const squares = this.getBoard().slice();
+        const legalMoves = Object.keys(getLegalMoves(currColor, squares));
+        const randMove = legalMoves[~~(Math.random() * legalMoves.length)];
+        this.turn(parseInt(randMove));
+    }
+
+    turn(i: number) {
+        const currColor = this.getCurrentPlayer();
+        if(!this.props.startGame ||
+            this.isGameOver() || 
+            this.state.color !== currColor){
+            return;
+        }
+        const squares = this.getBoard().slice();
         const legalMoves = getLegalMoves(currColor, squares);
-        if (!this.props.startGame ||
-            this.isGameOver() ||
-            squares[i] ||
-            !legalMoves.hasOwnProperty(i) ||
-            this.state.color !== currColor) {
+        if (squares[i] || !legalMoves.hasOwnProperty(i)){
+            console.log(legalMoves);
             return;
         }
 
@@ -131,11 +149,16 @@ class Game extends React.Component<Props, State> {
             color: currColor,
             flips: legalMoves[i]
         };
+
         // Perform the move on the current board
         this.move(move);
 
         // Emit move to server
         this.makeMove(move);
+    }
+
+    handleClick(i: number) {
+        this.turn(i);
     }
 
     jumpTo(step: number) {
@@ -148,19 +171,6 @@ class Game extends React.Component<Props, State> {
     render() {
         const history = this.state.history;
         const current = history[this.state.stepNumber];
-
-        /*const moves = history.map((step, move) => {
-            const desc = move ?
-                'Move #' + move :
-                'Start';
-            return (
-                <li key={move}>
-                    <button onClick={() => this.jumpTo(move)}>{desc}</button>
-                </li>
-            );
-        });*/
-
-        this.receiveMove();
 
         let status;
         if (this.isGameOver()) {
@@ -180,8 +190,9 @@ class Game extends React.Component<Props, State> {
                         />
                     </div>
                     <div className="game-info">
+                        <div> My Color: {this.state.color} </div>
                         <div>{status}</div>
-                        {/*<ol>{moves}</ol>*/}
+                        <div>{this.props.startGame && <button onClick={() => this.randomTurn()}>Random Legal Move </button>}</div>
                     </div>
                 </div>
             </div>
@@ -218,7 +229,6 @@ function isSpotInBoard(spot: number): boolean{
 function getMoves(): Array<number> {
     // UP, DOWN, LEFT, RIGHT, UP_LEFT, UP_RIGHT, DOWN_LEFT, DOWN_RIGHT
     return [8, -8, 1, -1, 9, 7, -7, -9]
-    //return [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
 }
 
 function moveDirection(spot: number, move: number) {
@@ -291,5 +301,9 @@ function getLegalMoves(currColor: string, squares: Array<string>) {
             spots[pos] = flips;
         }
     });
+    // If no spots are legal, add passTurn as an option
+    if(spots && Object.keys(spots).length === 0){
+        spots[-1] = [];
+    }
     return spots;
 }

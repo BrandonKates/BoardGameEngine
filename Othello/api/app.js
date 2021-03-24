@@ -14,12 +14,12 @@ const index = require("./routes/index");
 
 app.use(index);
 
-
+var playerNum = 1;
 let players;
 var joined = true;
-
-var games = Array(100);
-for (let i = 0; i < 100; i++){
+const numGames = 5;
+var games = Array(numGames);
+for (let i = 0; i < numGames; i++){
   games[i] = {players: 0, pid: [0, 0]}
 }
 
@@ -27,11 +27,13 @@ for (let i = 0; i < 100; i++){
 io.on("connection", (socket) => {
   console.log("New client connected");
   var color;
-  var playerId = Math.floor((Math.random() * 100) + 1);
+  var playerId = playerNum;
+  playerNum++;
 
   console.log(playerId + ' connected!');
 
   socket.on('joined', function(roomId) {
+    console.log(roomId);
     if(games[roomId].players < 2){
       games[roomId].players++;
       games[roomId].pid[games[roomId].players - 1] = playerId;
@@ -60,7 +62,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
-      for (let i = 0; i < 100; i++) {
+      for (let i = 0; i < numGames; i++) {
           if (games[i].pid[0] == playerId || games[i].pid[1] == playerId)
               games[i].players--;
       }
