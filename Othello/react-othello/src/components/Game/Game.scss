@@ -1,8 +1,24 @@
 .game {
   display: flex;
   flex-direction: row;
+  align-items: center;
+  justify-content: center;
+}
+
+.game-board-header {
+	font-size: 35px;
+	margin-bottom: 5px;
+}
+
+.scoreboard {
+  margin-right: 20px;
+}
+
+.game-board {
+  text-align: center;
 }
 
 .game-info {
   margin-left: 20px;
 }
+

@@ -1,17 +1,16 @@
+@import '../../index';
 
 .square {
-  background: #fff;
-  border: 1px solid #999;
+  background: #005a2b;
+  border: 1px solid #ccc;
   float: left;
-  font-size: 24px;
+  font-size: $font-size;
   font-weight: bold;
-  line-height: 34px;
-  height: 34px;
-  margin-right: -1px;
-  margin-top: -1px;
+  line-height: $box-size;
+  height: $box-size;
   padding: 0;
   text-align: center;
-  width: 34px;
+  width: $box-size;
 }
 
 
@@ -20,6 +19,7 @@
 }
 
 
-.kbd-navigation .square:focus {
-  background: #ddd;
+/*.square:hover {
+  background: #000;
 }
+*/

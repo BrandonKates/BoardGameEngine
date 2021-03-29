@@ -1,0 +1,50 @@
+@import '../../index';
+
+.score-row {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	justify-content: center;
+}
+
+
+.score-color-row {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	justify-content: center;
+}
+
+.score-color {
+	background: none;
+	border: 1px solid #999;
+	float: left;
+	font-size: $font-size;
+	font-weight: bold;
+	line-height: $box-size;
+	height: $box-size;
+	padding: 0;
+	text-align: center;
+	width: $box-size;
+	margin-left: -1px;
+	margin-bottom: -1px;
+}
+
+.score {
+	  background: none;
+	  border: 1px solid #999;
+	  float: left;
+	  font-size: $font-size;
+	  font-weight: bold;
+	  line-height: $box-size;
+	  height: $box-size;
+	  padding: 0;
+	  text-align: center;
+	  width: $box-size;
+	  margin-left: -1px;
+}
+
+.score-header {
+	text-align: center;
+	font-size: 40px;
+}

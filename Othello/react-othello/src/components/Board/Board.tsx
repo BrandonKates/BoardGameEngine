@@ -7,6 +7,8 @@ import * as _ from 'underscore'
 interface Props {
     squares: Array<Number>,
     onClick: any
+    myColor: string
+    currentColor: string
 }
 
 class Board extends React.Component<Props> {
@@ -15,6 +17,8 @@ class Board extends React.Component<Props> {
             <Square
                 value={this.props.squares[i]}
                 onClick={() => this.props.onClick(i)}
+                myColor={this.props.myColor}
+                currentColor={this.props.currentColor}
                 key={i}
             />
         );
@@ -22,7 +26,7 @@ class Board extends React.Component<Props> {
 
     render() {
         return (
-            <div>
+            <div className="board">
                 {_.times(8, (i: number) => (
                     <div className="board-row" key={i}>
                     {_.times(8, (j: number) => (

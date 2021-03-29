@@ -1,5 +1,6 @@
 import React from 'react';
 import Board from '../Board/Board';
+import Scoreboard from '../Scoreboard/Scoreboard';
 import './Game.scss';
 import * as _ from 'underscore'
 
@@ -179,14 +180,19 @@ class Game extends React.Component<Props, State> {
         } else {
             status = "Next player: " + (this.getCurrentPlayer());
         }
+        const score = getScore(current.squares);
 
         return (
-            <div>{this.props.gameStatus}
+            <div>
                 <div className="game">
+                    <Scoreboard className="scoreboard" score={score}/>
                     <div className="game-board">
+                    <div className="game-board-header">{this.props.gameStatus}</div>
                         <Board
                             squares={current.squares}
                             onClick={(i: any) => this.handleClick(i)}
+                            myColor={this.state.color}
+                            currentColor={this.getCurrentPlayer()}
                         />
                     </div>
                     <div className="game-info">
@@ -201,7 +207,8 @@ class Game extends React.Component<Props, State> {
 }
 export default Game;
 
-function calculateWinner(squares: Array<String>) {
+
+function getScore(squares: Array<String>) {
     var score = [0, 0];
     _.forEach(squares, sq => {
         if (sq === "⚪"){
@@ -211,6 +218,11 @@ function calculateWinner(squares: Array<String>) {
             score[1] += 1
         }
     });
+    return score;
+}
+
+function calculateWinner(squares: Array<String>) {
+    const score = getScore(squares);
     if(score[0] > score[1]){
         return "⚪";
     }
