@@ -63,7 +63,6 @@ class Game extends React.Component<Props, State> {
 
     receiveMove(move: Move){
         const passTurn = move.i === -1;
-        console.log("Received Move from Opponent: ", move);
         // Do not move if spot is invalid
         if(!(isSpotInBoard(move.i) || passTurn) || !this.isSpotEmpty(move.i)){
             return
@@ -140,11 +139,10 @@ class Game extends React.Component<Props, State> {
         const squares = this.getBoard().slice();
         const legalMoves = getLegalMoves(currColor, squares);
         if (squares[i] || !legalMoves.hasOwnProperty(i)){
-            console.log(legalMoves);
             return;
         }
 
-        // Create move object 
+        // Create move object
         var move = {
             i: i,
             color: currColor,
@@ -181,6 +179,7 @@ class Game extends React.Component<Props, State> {
             status = "Next player: " + (this.getCurrentPlayer());
         }
         const score = getScore(current.squares);
+        const legalMoves = getLegalMoves(this.getCurrentPlayer(), current.squares);
 
         return (
             <div>
@@ -193,6 +192,7 @@ class Game extends React.Component<Props, State> {
                             onClick={(i: any) => this.handleClick(i)}
                             myColor={this.state.color}
                             currentColor={this.getCurrentPlayer()}
+                            legalMoves={legalMoves}
                         />
                     </div>
                     <div className="game-info">
@@ -208,28 +208,28 @@ class Game extends React.Component<Props, State> {
 export default Game;
 
 
-function getScore(squares: Array<String>) {
-    var score = [0, 0];
+function getScore(squares: Array<string>) {
+    var score = {
+        "⚪": 0,
+        "⚫": 0
+    };
     _.forEach(squares, sq => {
-        if (sq === "⚪"){
-            score[0] += 1
-        }
-        if (sq === "⚫"){
-            score[1] += 1
+        if (score.hasOwnProperty(sq)){
+            score[sq]++;
         }
     });
     return score;
 }
 
-function calculateWinner(squares: Array<String>) {
+function calculateWinner(squares: Array<string>) {
     const score = getScore(squares);
-    if(score[0] > score[1]){
+    if(score["⚪"] > score["⚫"]){
         return "⚪";
     }
-    else if (score[1] > score[0]){
+    else if (score["⚫"] > score["⚪"]){
         return "⚫";
     }
-    else if (score[0] === score[1]){
+    else {
         return 'tie';
     }
 }
@@ -241,10 +241,6 @@ function isSpotInBoard(spot: number): boolean{
 function getMoves(): Array<number> {
     // UP, DOWN, LEFT, RIGHT, UP_LEFT, UP_RIGHT, DOWN_LEFT, DOWN_RIGHT
     return [8, -8, 1, -1, 9, 7, -7, -9]
-}
-
-function moveDirection(spot: number, move: number) {
-    return spot + move;
 }
 
 function getPositionsOfKind(kind: string | null, squares: Array<string>) {
@@ -261,7 +257,7 @@ function getEmptyPositions(squares: Array<string>) {
     return getPositionsOfKind(null, squares);
 }
 
-function flipSquare(spot: number, squares: Array<String>) {
+function flipSquare(spot: number, squares: Array<string>) {
     const square = squares[spot];
     if (square === "⚪") {
         squares[spot] = "⚫";
@@ -275,23 +271,22 @@ function getFlipsInDirection(spot: number, move: number, currColor: string, squa
     if (!isSpotInBoard(spot)){
         return [];
     }
-    spot = moveDirection(spot, move);
-    var flips = [];
-    var square;
+    spot += move;
+    let flips = [];
 
     while(isSpotInBoard(spot)) {
-        square = squares[spot];
-        if (square === null){
+        if (squares[spot] === null){
             return [];
         }
-        // enemy color
-        if (square !== currColor){
-            flips.push(spot);
-        }
-        else if (square === currColor) {
+        // if same color, return flips
+        else if (squares[spot] === currColor){
             return flips;
         }
-        spot = moveDirection(spot, move);
+        // if enemy, add a flip
+        else {
+            flips.push(spot);
+        }
+        spot += move;
     }
     return [];
 }

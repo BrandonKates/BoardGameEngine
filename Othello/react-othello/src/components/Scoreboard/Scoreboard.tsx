@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import './Scoreboard.scss';
 
 export default function Scoreboard(props: any) {
