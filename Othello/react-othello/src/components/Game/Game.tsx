@@ -209,7 +209,7 @@ export default Game;
 
 
 function getScore(squares: Array<string>) {
-    var score = {
+    var score: Record<string, number> = {
         "⚪": 0,
         "⚫": 0
     };
