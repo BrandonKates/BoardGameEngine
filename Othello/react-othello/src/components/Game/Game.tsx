@@ -234,13 +234,26 @@ function calculateWinner(squares: Array<string>) {
     }
 }
 
-function isSpotInBoard(spot: number): boolean{
+function isSpotInBoard(spot: number): boolean {
     return 0 <= spot && spot <= 63;
 }
 
-function getMoves(): Array<number> {
-    // UP, DOWN, LEFT, RIGHT, UP_LEFT, UP_RIGHT, DOWN_LEFT, DOWN_RIGHT
-    return [8, -8, 1, -1, 9, 7, -7, -9]
+function is2DSpotInBoard(row: number, column: number): boolean {
+  return (0 <= row && row <= 7) && (0 <= column  && column <= 7);
+}
+
+function calculateMove(spot: number, move: Array<number>): number {
+  var x = Math.floor(spot / 8);
+  var y = spot % 8;
+  x += move[0];
+  y += move[1];
+  return is2DSpotInBoard(x, y) ? (x * 8 + y) : -1;
+}
+
+function getMoves(): Array<Array<number>> {
+  // UP, DOWN, LEFT, RIGHT, UP_LEFT, UP_RIGHT, DOWN_LEFT, DOWN_RIGHT
+  //return [8, -8, 1, -1, 9, 7, -7, -9];
+  return [[1,0], [0, 1], [-1, 0], [0, -1], [1, -1], [1, 1], [-1, 1], [-1, -1]];
 }
 
 function getPositionsOfKind(kind: string | null, squares: Array<string>) {
@@ -267,11 +280,11 @@ function flipSquare(spot: number, squares: Array<string>) {
     }
 }
 
-function getFlipsInDirection(spot: number, move: number, currColor: string, squares: Array<string>): Array<number> {
+function getFlipsInDirection(spot: number, move: Array<number>, currColor: string, squares: Array<string>): Array<number> {
     if (!isSpotInBoard(spot)){
         return [];
     }
-    spot += move;
+    spot = calculateMove(spot, move);
     let flips = [];
 
     while(isSpotInBoard(spot)) {
@@ -286,7 +299,7 @@ function getFlipsInDirection(spot: number, move: number, currColor: string, squa
         else {
             flips.push(spot);
         }
-        spot += move;
+        spot = calculateMove(spot, move);
     }
     return [];
 }

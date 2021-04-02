@@ -11,7 +11,7 @@ import './App.scss';
 
 import { io } from "socket.io-client";
 
-const ENDPOINT = "https://api.brandonkates.com";
+const ENDPOINT = "localhost:9000";
 const socket = io(ENDPOINT);
 
 function App() {
