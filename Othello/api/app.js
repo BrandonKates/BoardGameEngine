@@ -34,7 +34,7 @@ io.on("connection", (socket) => {
 
   socket.on('joined', function(roomId) {
     console.log(roomId);
-    if(games[roomId].players < 2){
+    if(roomId < games.length && games[roomId].players < 2){
       games[roomId].players++;
       games[roomId].pid[games[roomId].players - 1] = playerId;
     }
