@@ -89,8 +89,10 @@ class Game extends React.Component<Props, State> {
         const nextColor = this.state.xIsNext ? "⚫" : "⚪";
         var legalMoves = Object.keys(getLegalMoves(currColor, current));
         var nextLegalMoves = Object.keys(getLegalMoves(nextColor, current));
-        return legalMoves.length === 0 && nextLegalMoves.length === 0;
 
+        // If both players can only pass, the game is over!
+        return legalMoves.length === 1 && legalMoves[0] === "-1" &&
+               nextLegalMoves.length === 1 && nextLegalMoves[0] === "-1";
     }
 
     getEmptyBoard() {
@@ -243,7 +245,7 @@ function is2DSpotInBoard(row: number, column: number): boolean {
 }
 
 function calculateMove(spot: number, move: Array<number>): number {
-  var x = Math.floor(spot / 8);
+  var x = ~~(spot / 8);
   var y = spot % 8;
   x += move[0];
   y += move[1];
