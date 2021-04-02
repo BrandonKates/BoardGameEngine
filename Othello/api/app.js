@@ -4,7 +4,7 @@ const app = express();
 const server = require('http').Server(app);
 const io = require('socket.io')(server, {
   cors: {
-    origin: "http://localhost:3000",
+    origin: "*",
     methods: ["GET", "POST"]
   }
 });
@@ -17,7 +17,7 @@ app.use(index);
 var playerNum = 1;
 let players;
 var joined = true;
-const numGames = 5;
+const numGames = 10;
 var games = Array(numGames);
 for (let i = 0; i < numGames; i++){
   games[i] = {players: 0, pid: [0, 0]}
