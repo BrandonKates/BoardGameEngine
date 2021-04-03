@@ -203,7 +203,7 @@ class Game extends React.Component<Props, State> {
                     <div className="game-info">
                         <div> My Color: {this.state.color} </div>
                         <div>{status}</div>
-                        <div>{this.props.startGame && <button onClick={() => this.randomTurn()}>Random Legal Move </button>}</div>
+                        <div>{this.props.startGame && <button onClick={() => this.randomTurn()}>Random Move (or Pass) </button>}</div>
                     </div>
                 </div>
             </div>
