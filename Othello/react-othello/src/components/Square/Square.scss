@@ -1,4 +1,4 @@
-@import '../../index';
+@import "../../index";
 
 .square {
   background: #005a2b;
@@ -13,11 +13,9 @@
   width: $box-size;
 }
 
-
 .square:focus {
   outline: none;
 }
-
 
 /*.square:hover {
   background: #000;

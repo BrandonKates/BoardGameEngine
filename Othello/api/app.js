@@ -16,7 +16,6 @@ app.use(index);
 
 var playerNum = 1;
 let players;
-var joined = true;
 const numGames = 10;
 var games = Array(numGames);
 for (let i = 0; i < numGames; i++){
