@@ -17,6 +17,7 @@ app.use(index);
 var playerNum = 1;
 let players;
 const numGames = 10;
+
 var games = Array(numGames);
 for (let i = 0; i < numGames; i++){
   games[i] = {players: 0, pid: [0, 0]}
@@ -26,8 +27,7 @@ for (let i = 0; i < numGames; i++){
 io.on("connection", (socket) => {
   console.log("New client connected");
   var color;
-  var playerId = playerNum;
-  playerNum++;
+  var playerId = playerNum++;
 
   console.log(playerId + ' connected!');
 
