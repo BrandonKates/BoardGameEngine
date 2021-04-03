@@ -64,11 +64,11 @@ class Game extends React.Component<Props, State> {
     receiveMove(move: Move){
         const passTurn = move.i === -1;
         // Do not move if spot is invalid
-        if(!(isSpotInBoard(move.i) || passTurn) || !this.isSpotEmpty(move.i)){
-            return
+        
+        if(passTurn || (isSpotInBoard(move.i) && this.isSpotEmpty(move.i))){
+          console.log("Opponent made move: ", move);
+          return this.move(move);
         }
-        console.log("Opponent made move: ", move);
-        return this.move(move);
     }
 
     getBoard(){
