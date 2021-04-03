@@ -48,16 +48,18 @@ export default function ClientComponent(props: any) {
 
   useEffect(() => {
     socket.on('player', (msg: any) => {
-      setColor(msg.color);
-      const players = msg.players; // number of players
+      if (state.roomId === msg.roomId) {
+        setColor(msg.color);
+        const players = msg.players; // number of players
 
-      if(players === 2){
-        setStartGame(true);
-        socket.emit('play', msg.roomId);
-        setGameStatus('Game in Progress');
-      }
-      else {
-        setGameStatus('Waiting for Second Player');
+        if(players === 2){
+          setStartGame(true);
+          socket.emit('play', msg.roomId);
+          setGameStatus('Game in Progress');
+        }
+        else {
+          setGameStatus('Waiting for Second Player');
+        }
       }
     });
   });
