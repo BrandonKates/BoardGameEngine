@@ -63,8 +63,10 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", () => {
       for (let i = 0; i < numGames; i++) {
+        // on disconnect, reset the room
           if (games[i].pid[0] == playerId || games[i].pid[1] == playerId)
-              games[i].players--;
+            // on disconnect, reset the room
+            games[i] = {players: 0, pid: [0, 0]}
       }
       console.log(playerId + ' disconnected');
   });
