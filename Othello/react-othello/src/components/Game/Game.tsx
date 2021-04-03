@@ -10,6 +10,7 @@ interface Props {
     startGame: boolean
     color: string
     gameStatus: string
+    roomId: number
     socket: any
 }
 
@@ -48,8 +49,10 @@ class Game extends React.Component<Props, State> {
     }
 
     componentDidMount(){
-        this.props.socket.on('move', (move: Move) => {
-            this.receiveMove(move);
+        this.props.socket.on('move', (msg: any) => {
+            if(msg.roomId === this.props.roomId){
+              this.receiveMove(msg.move);
+            }
         });
     }
     componentWillUnmount(){
@@ -64,7 +67,7 @@ class Game extends React.Component<Props, State> {
     receiveMove(move: Move){
         const passTurn = move.i === -1;
         // Do not move if spot is invalid
-        
+
         if(passTurn || (isSpotInBoard(move.i) && this.isSpotEmpty(move.i))){
           console.log("Opponent made move: ", move);
           return this.move(move);

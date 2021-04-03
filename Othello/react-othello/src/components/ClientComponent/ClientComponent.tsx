@@ -21,7 +21,10 @@ export default function ClientComponent(props: any) {
   const makeMove = (move: Move) => {
     console.log("Make Move: ", move.i, "\nColor: ", move.color, "\nFlips: ", move.flips);
     // Emit to server, which propagates to other client
-    socket.emit('move', move);
+    socket.emit('move', {
+      move: move,
+      roomId: state.roomId
+    });
     return
   }
   
@@ -67,7 +70,7 @@ export default function ClientComponent(props: any) {
   if(color !== '' && gameStatus !== ''){
     return (
       <div>
-        <Game makeMove={(i) => makeMove(i)} startGame={startGame} color={color} gameStatus={gameStatus} socket={socket}/>
+        <Game makeMove={(i) => makeMove(i)} startGame={startGame} color={color} gameStatus={gameStatus} roomId={state.roomId} socket={socket}/>
       </div>
     );
   }
