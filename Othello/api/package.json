@@ -13,6 +13,6 @@
     "http-errors": "~1.6.3",
     "jade": "^1.9.2",
     "morgan": "~1.9.1",
-    "socket.io": "^4.0.0"
+    "socket.io": "^4.5.3"
   }
 }
